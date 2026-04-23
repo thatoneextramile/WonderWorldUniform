@@ -698,7 +698,7 @@ ${FONTS}
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
   --mint:#e8f7f0; --mint-mid:#3db882; --mint-dark:#1a7a55;
-  --sky:#e6f3fb;  --sky-mid:#4da8da;  --sky-dark:#1a5f8a;
+  --sky:#fdf0e6;      --sky-mid:#e8833a;   --sky-dark:#9e3f0f;
   --peach:#fef0eb;--peach-mid:#f5845a;--peach-dark:#a83d1e;
   --lemon:#fdfae7;--lemon-mid:#e8c83a;--lemon-dark:#8a6e0a;
   --purple:#f0eeff;--purple-mid:#8b72e8;--purple-dark:#4a2db5;
@@ -774,7 +774,7 @@ function Btn({
   };
   const variants = {
     primary: { background: "var(--sky-dark)", color: "#fff" },
-    admin: { background: "var(--sky-dark)", color: "#fff" },
+    admin: { background: "var(--peach-mid)", color: "#fff" },
     danger: { background: "var(--peach-dark)", color: "#fff" },
     ghost: {
       background: "transparent",
@@ -3238,8 +3238,7 @@ function ParentShell() {
               style={{
                 fontSize: 10,
                 fontWeight: 700,
-                color:
-                  parentPage === t.id ? "var(--sky-dark)" : "var(--text3)",
+                color: parentPage === t.id ? "var(--sky-dark)" : "var(--text3)",
               }}
             >
               {t.label}
@@ -6196,7 +6195,7 @@ function AdminShell() {
                       padding: "8px 14px 3px",
                       fontSize: 9,
                       fontWeight: 800,
-                      color: "rgba(255,255,255,.4)",
+                      color: "rgba(255,255,255,.65)",
                       letterSpacing: ".08em",
                       textTransform: "uppercase",
                     }}
@@ -6215,10 +6214,10 @@ function AdminShell() {
                     gap: 8,
                     padding: sidebarOpen ? "8px 14px" : "8px",
                     background:
-                      adminPage === item.id ? "rgba(255,255,255,.2)" : "none",
+                      adminPage === item.id ? "rgba(0,0,0,.2)" : "none",
                     border: "none",
                     color:
-                      adminPage === item.id ? "#fff" : "rgba(255,255,255,.7)",
+                      adminPage === item.id ? "#fff" : "rgba(255,255,255,.92)",
                     cursor: "pointer",
                     fontFamily: "var(--font-body)",
                     fontWeight: 600,
@@ -6620,7 +6619,7 @@ export default function App() {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-               background:
+              background:
                 "linear-gradient(160deg,#d6ede5 0%,#f5f3ef 60%,#fdf8ec 100%)",
               padding: 16,
             }}
