@@ -674,14 +674,16 @@ const STATUS_LABELS = {
   REVIEW: "Review",
   READY_FOR_PICKUP: "Ready for Pick Up",
   PICKED_UP: "Picked Up",
+  PAID: "Paid",
   CANCELLED: "Cancelled",
 };
 const STATUS_COLORS = {
-  SUBMITTED: "#e6f3fb:#1a5f8a",
-  REVIEW: "#fdfae7:#8a6e0a",
-  READY_FOR_PICKUP: "#e8f7f0:#1a7a55",
-  PICKED_UP: "#e8f7e8:#1a7a1a",
-  CANCELLED: "#fef0eb:#a83d1e",
+  SUBMITTED: "#d5e9e4:#1a5c47",
+  REVIEW: "#fdf8ec:#8a6a10",
+  READY_FOR_PICKUP: "#d6ede5:#1e6e4a",
+  PICKED_UP: "#d6edda:#1a5c1a",
+  PAID: "#ece8f5:#4a35a0",
+  CANCELLED: "#fdf0e6:#c45e18",
 };
 
 // ─── CONTEXT ──────────────────────────────────────────────────
@@ -732,7 +734,7 @@ body          { font-size:15px; }
 .txt-2xl      { font-size:24px; }
 .txt-label    { font-size:11px; font-weight:700; letter-spacing:.04em; color:var(--text2); }
 .txt-muted    { font-size:12px; color:var(--text3); }
-.txt-price    { font-size:14px; font-weight:800; color:var(--mint-dark); }
+.txt-price    { font-size:14px; font-weight:800; color:var(--sky-dark); }
 .txt-section  { font-family:var(--font-display); font-size:17px; font-weight:700; color:var(--text); }
 .txt-stat-val { font-family:var(--font-display); font-size:22px; font-weight:900; }
 .txt-stat-lbl { font-size:10px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--text3); }
@@ -771,7 +773,7 @@ function Btn({
     lg: { padding: "12px 24px", fontSize: 15 },
   };
   const variants = {
-    primary: { background: "var(--mint-dark)", color: "#fff" },
+    primary: { background: "var(--sky-dark)", color: "#fff" },
     admin: { background: "var(--sky-dark)", color: "#fff" },
     danger: { background: "var(--peach-dark)", color: "#fff" },
     ghost: {
@@ -779,7 +781,7 @@ function Btn({
       color: "var(--text2)",
       border: "1px solid var(--border)",
     },
-    soft: { background: "var(--mint)", color: "var(--mint-dark)" },
+    soft: { background: "var(--sky)", color: "var(--sky-dark)" },
     softBlue: { background: "var(--sky)", color: "var(--sky-dark)" },
     softRed: { background: "var(--peach)", color: "var(--peach-dark)" },
   };
@@ -990,7 +992,7 @@ function Toggle({ checked, onChange }) {
           position: "absolute",
           cursor: "pointer",
           inset: 0,
-          background: checked ? "var(--mint-dark)" : "var(--border2)",
+          background: checked ? "var(--sky-dark)" : "var(--border2)",
           borderRadius: 10,
           transition: ".3s",
         }}
@@ -1014,7 +1016,7 @@ function Toggle({ checked, onChange }) {
   );
 }
 
-function StatCard({ label, value, sub, color = "var(--mint-dark)" }) {
+function StatCard({ label, value, sub, color = "var(--sky-dark)" }) {
   return (
     <div
       style={{
@@ -1085,7 +1087,7 @@ function Toast({ message, onClose }) {
         position: "fixed",
         bottom: 24,
         right: 24,
-        background: "var(--mint-dark)",
+        background: "var(--sky-dark)",
         color: "#fff",
         padding: "12px 20px",
         borderRadius: "var(--radius-sm)",
@@ -1389,15 +1391,25 @@ function ParentLogin() {
               width: 60,
               height: 60,
               borderRadius: "50%",
-              background: "var(--mint)",
+              background: "var(--sky-dark)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               fontSize: 28,
               margin: "0 auto 12px",
+              overflow: "hidden",
             }}
           >
-            {state.settings.logoEmoji}
+            {/* {state.settings.logoEmoji} */}
+            {state.settings.logoUrl ? (
+              <img
+                src={state.settings.logoUrl}
+                alt="Logo"
+                style={{ width: "100%", height: "100%", objectFit: "contain" }}
+              />
+            ) : (
+              state.settings.logoEmoji
+            )}
           </div>
           <h1
             style={{
@@ -1776,7 +1788,7 @@ function ProductImageGallery({
                 height: 44,
                 borderRadius: 6,
                 overflow: "hidden",
-                border: `2px solid ${i === activeIdx ? "var(--mint-dark)" : "transparent"}`,
+                border: `2px solid ${i === activeIdx ? "var(--sky-dark)" : "transparent"}`,
                 background: "none",
                 padding: 0,
                 cursor: "pointer",
@@ -1886,7 +1898,7 @@ function ImageUploader({ images = [], onChange, onNewFiles }) {
                 height: 72,
                 borderRadius: 8,
                 overflow: "hidden",
-                border: `2px solid ${i === 0 ? "var(--mint-dark)" : type === "pending" ? "var(--sky-mid)" : "var(--border)"}`,
+                border: `2px solid ${i === 0 ? "var(--sky-dark)" : type === "pending" ? "var(--sky-mid)" : "var(--border)"}`,
               }}
             >
               <img
@@ -1901,7 +1913,7 @@ function ImageUploader({ images = [], onChange, onNewFiles }) {
                     bottom: 0,
                     left: 0,
                     right: 0,
-                    background: "rgba(26,122,85,.85)",
+                    background: "rgba(30,110,74,.9)",
                     color: "#fff",
                     fontSize: 8,
                     fontWeight: 800,
@@ -2105,7 +2117,8 @@ function ParentHome() {
       {/* Hero */}
       <div
         style={{
-          background: "linear-gradient(135deg,var(--mint) 0%,var(--sky) 100%)",
+          background:
+            "linear-gradient(150deg,#c8e6d8 0%,#d6ede5 40%,#fdf8ec 100%)",
           borderRadius: "var(--radius)",
           padding: "20px 22px",
           marginBottom: 16,
@@ -2117,13 +2130,19 @@ function ParentHome() {
             fontFamily: "var(--font-display)",
             fontWeight: 700,
             fontSize: 20,
-            color: "var(--mint-dark)",
+            color: "var(--sky-dark)",
             marginBottom: 4,
           }}
         >
           {state.settings.welcomeTitle}
         </h1>
-        <p style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.5 }}>
+        <p
+          style={{
+            fontSize: 13,
+            color: "rgba(255,255,255,.88)",
+            lineHeight: 1.5,
+          }}
+        >
           {state.settings.welcomeText}
         </p>
         {state.settings.noticeText && (
@@ -2132,7 +2151,7 @@ function ParentHome() {
               display: "inline-flex",
               alignItems: "center",
               gap: 6,
-              background: "var(--mint-dark)",
+              background: "var(--sky-dark)",
               color: "#fff",
               padding: "5px 14px",
               borderRadius: 30,
@@ -2160,8 +2179,8 @@ function ParentHome() {
               fontWeight: 700,
               cursor: "pointer",
               border: "1.5px solid",
-              borderColor: cat === c ? "var(--mint-dark)" : "var(--border)",
-              background: cat === c ? "var(--mint-dark)" : "var(--bg)",
+              borderColor: cat === c ? "var(--sky-dark)" : "var(--border)",
+              background: cat === c ? "var(--sky-dark)" : "var(--bg)",
               color: cat === c ? "#fff" : "var(--text2)",
               transition: "all .15s",
             }}
@@ -2219,7 +2238,7 @@ function ParentHome() {
               <div
                 style={{
                   fontSize: 14,
-                  color: "var(--mint-dark)",
+                  color: "var(--sky-dark)",
                   fontWeight: 800,
                 }}
               >
@@ -2287,7 +2306,7 @@ function ParentHome() {
             style={{
               fontSize: 22,
               fontWeight: 900,
-              color: "var(--mint-dark)",
+              color: "var(--sky-dark)",
               fontFamily: "var(--font-display)",
               marginBottom: 14,
             }}
@@ -2314,9 +2333,9 @@ function ParentHome() {
                   cursor: "pointer",
                   border: "2px solid",
                   borderColor:
-                    addSize === s ? "var(--mint-dark)" : "var(--border)",
-                  background: addSize === s ? "var(--mint)" : "var(--bg)",
-                  color: addSize === s ? "var(--mint-dark)" : "var(--text2)",
+                    addSize === s ? "var(--sky-dark)" : "var(--border)",
+                  background: addSize === s ? "var(--sky)" : "var(--bg)",
+                  color: addSize === s ? "var(--sky-dark)" : "var(--text2)",
                   transition: "all .15s",
                 }}
               >
@@ -2385,7 +2404,7 @@ function ParentHome() {
                 marginLeft: "auto",
                 fontWeight: 800,
                 fontSize: 16,
-                color: "var(--mint-dark)",
+                color: "var(--sky-dark)",
               }}
             >
               ${(selectedProduct.sellingPrice * addQty).toFixed(2)}
@@ -2477,7 +2496,7 @@ function ParentCart() {
             fontFamily: "var(--font-display)",
             fontWeight: 700,
             fontSize: 22,
-            color: "var(--mint-dark)",
+            color: "var(--sky-dark)",
             marginBottom: 8,
           }}
         >
@@ -2556,7 +2575,11 @@ function ParentCart() {
                 <img
                   src={item.images[0]}
                   alt=""
-                  style={{ width: "100%", height: "100%", objectFit: "contain" }}
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "contain",
+                  }}
                 />
               ) : (
                 <div
@@ -2642,7 +2665,7 @@ function ParentCart() {
               style={{
                 fontWeight: 800,
                 fontSize: 14,
-                color: "var(--mint-dark)",
+                color: "var(--sky-dark)",
                 minWidth: 56,
                 textAlign: "right",
               }}
@@ -2700,7 +2723,7 @@ function ParentCart() {
                   Discount{" "}
                   <span
                     style={{
-                      background: "var(--peach-mid)",
+                      background: "var(--peach-dark)",
                       color: "#fff",
                       fontSize: 9,
                       fontWeight: 800,
@@ -2737,7 +2760,7 @@ function ParentCart() {
               justifyContent: "space-between",
               fontSize: 16,
               fontWeight: 900,
-              color: "var(--mint-dark)",
+              color: "var(--sky-dark)",
               paddingTop: 8,
               borderTop: "1px solid var(--border2)",
               marginTop: 4,
@@ -2939,7 +2962,7 @@ function ParentOrders() {
                 style={{
                   fontSize: 14,
                   fontWeight: 800,
-                  color: "var(--mint-dark)",
+                  color: "var(--sky-dark)",
                 }}
               >
                 ${Number(o.totalAmount).toFixed(2)}
@@ -3077,7 +3100,7 @@ function ParentOrders() {
                 justifyContent: "space-between",
                 fontSize: 15,
                 fontWeight: 900,
-                color: "var(--mint-dark)",
+                color: "var(--sky-dark)",
                 paddingTop: 6,
                 borderTop: "1px solid var(--border)",
                 marginTop: 4,
@@ -3135,7 +3158,20 @@ function ParentShell() {
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 20 }}>{state.settings.logoEmoji}</span>
+          {state.settings.logoUrl ? (
+            <img
+              src={state.settings.logoUrl}
+              alt="Logo"
+              style={{
+                width: 28,
+                height: 28,
+                objectFit: "contain",
+                borderRadius: 4,
+              }}
+            />
+          ) : (
+            <span style={{ fontSize: 20 }}>{state.settings.logoEmoji}</span>
+          )}
           <span
             style={{
               fontFamily: "var(--font-display)",
@@ -3193,7 +3229,7 @@ function ParentShell() {
               flexDirection: "column",
               alignItems: "center",
               gap: 3,
-              borderTop: `2.5px solid ${parentPage === t.id ? "var(--mint-dark)" : "transparent"}`,
+              borderTop: `2.5px solid ${parentPage === t.id ? "var(--sky-dark)" : "transparent"}`,
               transition: "all .15s",
             }}
           >
@@ -3203,7 +3239,7 @@ function ParentShell() {
                 fontSize: 10,
                 fontWeight: 700,
                 color:
-                  parentPage === t.id ? "var(--mint-dark)" : "var(--text3)",
+                  parentPage === t.id ? "var(--sky-dark)" : "var(--text3)",
               }}
             >
               {t.label}
@@ -3715,7 +3751,7 @@ function AdminProducts() {
                     padding: "10px 10px",
                     borderBottom: "0.5px solid var(--border)",
                     fontWeight: 700,
-                    color: "var(--mint-dark)",
+                    color: "var(--sky-dark)",
                   }}
                 >
                   ${p.sellingPrice}
@@ -4254,8 +4290,8 @@ function AdminInventory() {
                 >
                   <span
                     style={{
-                      background: "var(--mint)",
-                      color: "var(--mint-dark)",
+                      background: "var(--sky)",
+                      color: "var(--sky-dark)",
                       padding: "3px 9px",
                       borderRadius: 30,
                       fontSize: 11,
@@ -4543,7 +4579,7 @@ function AdminOrders() {
                         padding: "9px 10px",
                         borderBottom: "0.5px solid var(--border)",
                         fontWeight: 800,
-                        color: "var(--mint-dark)",
+                        color: "var(--sky-dark)",
                       }}
                     >
                       {/* ${o.totalAmount.toFixed(2)} */}
@@ -4734,7 +4770,7 @@ function AdminOrders() {
                 justifyContent: "space-between",
                 fontSize: 15,
                 fontWeight: 900,
-                color: "var(--mint-dark)",
+                color: "var(--sky-dark)",
                 paddingTop: 6,
                 borderTop: "1px solid var(--border)",
                 marginTop: 4,
@@ -4807,7 +4843,7 @@ function AdminMasterControl() {
     try {
       const saved = await api("/api/admin/settings", {
         method: "PUT",
-        body: settings,
+        body: { ...settings },
       });
       dispatch({ type: "UPDATE_SETTINGS", settings: saved });
       dispatch({ type: "SET_TOAST", message: "Settings saved!" });
@@ -5064,8 +5100,8 @@ function AdminMasterControl() {
                 {l.isDefault && (
                   <span
                     style={{
-                      background: "var(--mint)",
-                      color: "var(--mint-dark)",
+                      background: "var(--sky)",
+                      color: "var(--sky-dark)",
                       fontSize: 9,
                       fontWeight: 800,
                       padding: "2px 8px",
@@ -5151,6 +5187,127 @@ function AdminMasterControl() {
               onChange={(v) => setSettings({ ...settings, logoEmoji: v })}
               placeholder="🎒"
             />
+            {/* Logo image upload */}
+            <div>
+              <label
+                className="txt-label"
+                style={{ display: "block", marginBottom: 6 }}
+              >
+                Logo Image (overrides emoji)
+              </label>
+              {settings.logoUrl && (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    marginBottom: 8,
+                  }}
+                >
+                  <img
+                    src={settings.logoUrl}
+                    alt="Logo"
+                    style={{
+                      width: 56,
+                      height: 56,
+                      objectFit: "contain",
+                      borderRadius: 8,
+                      border: "1px solid var(--border)",
+                      background: "var(--bg2)",
+                      padding: 4,
+                    }}
+                  />
+                  <button
+                    onClick={() => setSettings({ ...settings, logoUrl: "" })}
+                    style={{
+                      padding: "4px 10px",
+                      border: "none",
+                      borderRadius: 5,
+                      background: "var(--peach)",
+                      color: "var(--peach-dark)",
+                      fontSize: 11,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Remove
+                  </button>
+                </div>
+              )}
+              <label
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "9px 12px",
+                  border: "2px dashed var(--border)",
+                  borderRadius: "var(--radius-sm)",
+                  cursor: "pointer",
+                  background: "var(--bg2)",
+                }}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={async (e) => {
+                  e.preventDefault();
+                  const file = e.dataTransfer.files[0];
+                  if (!file) return;
+                  const fd = new FormData();
+                  fd.append("logo", file);
+                  try {
+                    const result = await apiUpload(
+                      "/api/admin/settings/logo",
+                      fd,
+                    );
+                    setSettings((s) => ({ ...s, logoUrl: result.logoUrl }));
+                    dispatch({
+                      type: "UPDATE_SETTINGS",
+                      settings: { logoUrl: result.logoUrl },
+                    });
+                    dispatch({ type: "SET_TOAST", message: "Logo uploaded!" });
+                  } catch (err) {
+                    dispatch({
+                      type: "SET_TOAST",
+                      message: err.message || "Upload failed",
+                    });
+                  }
+                }}
+              >
+                <span style={{ fontSize: 18 }}>🖼️</span>
+                <span style={{ fontSize: 12, color: "var(--text2)" }}>
+                  Click or drag an image here
+                </span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  style={{ display: "none" }}
+                  onChange={async (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    const fd = new FormData();
+                    fd.append("logo", file);
+                    try {
+                      const result = await apiUpload(
+                        "/api/admin/settings/logo",
+                        fd,
+                      );
+                      setSettings((s) => ({ ...s, logoUrl: result.logoUrl }));
+                      dispatch({
+                        type: "UPDATE_SETTINGS",
+                        settings: { logoUrl: result.logoUrl },
+                      });
+                      dispatch({
+                        type: "SET_TOAST",
+                        message: "Logo uploaded!",
+                      });
+                    } catch (err) {
+                      dispatch({
+                        type: "SET_TOAST",
+                        message: err.message || "Upload failed",
+                      });
+                    }
+                  }}
+                />
+              </label>
+            </div>
             <Input
               label="Homepage Welcome Title"
               value={settings.welcomeTitle}
@@ -5525,12 +5682,12 @@ function AdminAdmins() {
   ).length;
 
   const roleColors = {
-    SUPER_ADMIN: "var(--mint)",
+    SUPER_ADMIN: "var(--sky)",
     MANAGER: "var(--sky)",
     STAFF: "var(--lemon)",
   };
   const roleTextColors = {
-    SUPER_ADMIN: "var(--mint-dark)",
+    SUPER_ADMIN: "var(--sky-dark)",
     MANAGER: "var(--sky-dark)",
     STAFF: "var(--lemon-dark)",
   };
@@ -5729,8 +5886,8 @@ function AdminAdmins() {
                     }
                     style={{
                       ...btnBase,
-                      background: a.isActive ? "var(--mint)" : "var(--bg3)",
-                      color: a.isActive ? "var(--mint-dark)" : "var(--text3)",
+                      background: a.isActive ? "var(--sky)" : "var(--bg3)",
+                      color: a.isActive ? "var(--sky-dark)" : "var(--text3)",
                       cursor: lastSuper ? "not-allowed" : "pointer",
                       opacity: lastSuper ? 0.5 : 1,
                     }}
@@ -5981,9 +6138,23 @@ function AdminShell() {
             borderBottom: "1px solid rgba(255,255,255,.15)",
           }}
         >
-          <span style={{ fontSize: 18, flexShrink: 0 }}>
-            {state.settings.logoEmoji}
-          </span>
+          {state.settings.logoUrl ? (
+            <img
+              src={state.settings.logoUrl}
+              alt="Logo"
+              style={{
+                width: 24,
+                height: 24,
+                objectFit: "contain",
+                borderRadius: 3,
+                flexShrink: 0,
+              }}
+            />
+          ) : (
+            <span style={{ fontSize: 18, flexShrink: 0 }}>
+              {state.settings.logoEmoji}
+            </span>
+          )}
           {sidebarOpen && (
             <span
               style={{
@@ -6054,7 +6225,7 @@ function AdminShell() {
                     fontSize: 12,
                     textAlign: "left",
                     transition: ".15s",
-                    borderLeft: `3px solid ${adminPage === item.id ? "rgba(255,255,255,.8)" : "transparent"}`,
+                    borderLeft: `3px solid ${adminPage === item.id ? "#e8c86a" : "transparent"}`,
                   }}
                 >
                   <span style={{ fontSize: 15, flexShrink: 0 }}>
@@ -6299,7 +6470,7 @@ function AdminParents() {
                 <td style={tdStyle}>
                   <span
                     style={{
-                      color: p.isActive ? "var(--mint-dark)" : "var(--text3)",
+                      color: p.isActive ? "var(--sky-dark)" : "var(--text3)",
                       fontWeight: 700,
                       fontSize: 11,
                     }}
@@ -6317,10 +6488,10 @@ function AdminParents() {
                       fontSize: 11,
                       fontWeight: 700,
                       cursor: "pointer",
-                      background: p.isActive ? "var(--peach)" : "var(--mint)",
+                      background: p.isActive ? "var(--peach)" : "var(--sky)",
                       color: p.isActive
                         ? "var(--peach-dark)"
-                        : "var(--mint-dark)",
+                        : "var(--sky-dark)",
                     }}
                   >
                     {p.isActive ? "Deactivate" : "Activate"}
@@ -6449,8 +6620,8 @@ export default function App() {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              background:
-                "linear-gradient(135deg,var(--sky) 0%,var(--bg2) 100%)",
+               background:
+                "linear-gradient(160deg,#d6ede5 0%,#f5f3ef 60%,#fdf8ec 100%)",
               padding: 16,
             }}
           >
@@ -6605,11 +6776,11 @@ export default function App() {
                     border: "1.5px solid",
                     borderColor:
                       state.view === "parent"
-                        ? "var(--mint-dark)"
+                        ? "var(--sky-dark)"
                         : "var(--border)",
                     background:
                       state.view === "parent"
-                        ? "var(--mint-dark)"
+                        ? "var(--sky-dark)"
                         : "rgba(255,255,255,.9)",
                     color: state.view === "parent" ? "#fff" : "var(--text2)",
                   }}
