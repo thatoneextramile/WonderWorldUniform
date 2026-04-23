@@ -992,7 +992,7 @@ function Toggle({ checked, onChange }) {
           position: "absolute",
           cursor: "pointer",
           inset: 0,
-          background: checked ? "var(--sky-dark)" : "var(--border2)",
+          background: checked ? "#2a7a4e" : "var(--border2)",
           borderRadius: 10,
           transition: ".3s",
         }}
@@ -3750,7 +3750,7 @@ function AdminProducts() {
                     padding: "10px 10px",
                     borderBottom: "0.5px solid var(--border)",
                     fontWeight: 700,
-                    color: "var(--sky-dark)",
+                    color: "#2a7a4e",
                   }}
                 >
                   ${p.sellingPrice}
@@ -3770,7 +3770,7 @@ function AdminProducts() {
                     padding: "10px 10px",
                     borderBottom: "0.5px solid var(--border)",
                     fontWeight: 700,
-                    color: "var(--sky-dark)",
+                    color: "#1a5c47",
                   }}
                 >
                   ${(p.sellingPrice - p.costPrice).toFixed(2)}
@@ -3839,8 +3839,8 @@ function AdminProducts() {
                         padding: "4px 10px",
                         borderRadius: 5,
                         border: "none",
-                        background: "var(--sky)",
-                        color: "var(--sky-dark)",
+                        background: "#dce6f0",
+                        color: "#1a3f6e",
                         fontSize: 11,
                         fontWeight: 700,
                         cursor: "pointer",
@@ -5681,13 +5681,13 @@ function AdminAdmins() {
   ).length;
 
   const roleColors = {
-    SUPER_ADMIN: "var(--sky)",
-    MANAGER: "var(--sky)",
+    SUPER_ADMIN: "#dce8e0",
+    MANAGER: "#dce6f0",
     STAFF: "var(--lemon)",
   };
   const roleTextColors = {
-    SUPER_ADMIN: "var(--sky-dark)",
-    MANAGER: "var(--sky-dark)",
+    SUPER_ADMIN: "#1e5c3a",
+    MANAGER: "#1a3f6e",
     STAFF: "var(--lemon-dark)",
   };
 
@@ -5885,8 +5885,8 @@ function AdminAdmins() {
                     }
                     style={{
                       ...btnBase,
-                      background: a.isActive ? "var(--sky)" : "var(--bg3)",
-                      color: a.isActive ? "var(--sky-dark)" : "var(--text3)",
+                      background: a.isActive ? "#dce8e0" : "var(--bg3)",
+                      color: a.isActive ? "#1e5c3a" : "var(--text3)",
                       cursor: lastSuper ? "not-allowed" : "pointer",
                       opacity: lastSuper ? 0.5 : 1,
                     }}
@@ -5901,8 +5901,8 @@ function AdminAdmins() {
                       onClick={() => openEdit(a)}
                       style={{
                         ...btnBase,
-                        background: "var(--sky)",
-                        color: "var(--sky-dark)",
+                        background: "#dce6f0",
+                        color: "#1a3f6e",
                       }}
                     >
                       Edit
