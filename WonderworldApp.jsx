@@ -233,7 +233,24 @@ async function apiUpload(path, formData) {
 }
 
 // ─── DESIGN TOKENS ────────────────────────────────────────────
-const FONTS = `@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&family=Quicksand:wght@500;600;700&display=swap');`;
+// const FONTS = `@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&family=Quicksand:wght@500;600;700&display=swap');`;
+
+const FONTS = `
+  @font-face {
+    font-family: 'DINPro';
+    src: url('/fonts/DINPro-Light.woff') format('woff');
+    font-weight: 300;
+    font-style: normal;
+    font-display: swap;
+  }
+  @font-face {
+    font-family: 'DINPro';
+    src: url('/fonts/DINPro-Bold.woff') format('woff');
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+  }
+`;
 
 // ─── MOCK DATA ─────────────────────────────────────────────────
 const INITIAL_PRODUCTS = [
@@ -698,7 +715,9 @@ ${FONTS}
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
   --mint:#e8f7f0; --mint-mid:#3db882; --mint-dark:#1a7a55;
-  --sky:#fdf0e6;      --sky-mid:#e8833a;   --sky-dark:#9e3f0f;
+  --sky-bg:#fdf0e6;      --sky-mid-bg:#e8833a;   --sky-dark-bg:#CC6D1A ;
+   --sky-bg:#fdf0e6;      --sky-mid-bg:#e8833a;   --ww-bg:#FF9E3E ;
+   --sky:#e6f3fb;  --sky-mid:#4da8da;  --sky-dark:#1a5f8a;
   --peach:#fef0eb;--peach-mid:#f5845a;--peach-dark:#a83d1e;
   --lemon:#fdfae7;--lemon-mid:#e8c83a;--lemon-dark:#8a6e0a;
   --purple:#f0eeff;--purple-mid:#8b72e8;--purple-dark:#4a2db5;
@@ -708,8 +727,8 @@ ${FONTS}
   --radius:12px; --radius-sm:8px; --radius-xs:5px;
   --shadow:0 2px 8px rgba(0,0,0,.07);
   --shadow-lg:0 8px 24px rgba(0,0,0,.10);
-  --font-display:'Quicksand',sans-serif;
-  --font-body:'Nunito',sans-serif;
+  --font-display:'DINPro',Georgia,sans-serif;
+  --font-body:'DINPro',system-ui,sans-serif;
 }
 body { font-family:var(--font-body); color:var(--text); background:var(--bg2); min-height:100vh; }
 button { cursor:pointer; font-family:var(--font-body); }
@@ -774,7 +793,7 @@ function Btn({
   };
   const variants = {
     primary: { background: "var(--sky-dark)", color: "#fff" },
-    admin: { background: "var(--peach-mid)", color: "#fff" },
+    admin: { background: "var(--sky-mid-bg)", color: "#fff" },
     danger: { background: "var(--peach-dark)", color: "#fff" },
     ghost: {
       background: "transparent",
@@ -1087,7 +1106,7 @@ function Toast({ message, onClose }) {
         position: "fixed",
         bottom: 24,
         right: 24,
-        background: "var(--sky-dark)",
+        background: "var(--sky-dark-bg)",
         color: "#fff",
         padding: "12px 20px",
         borderRadius: "var(--radius-sm)",
@@ -1390,8 +1409,8 @@ function ParentLogin() {
             style={{
               width: 60,
               height: 60,
-              borderRadius: "50%",
-              background: "var(--sky-dark)",
+              //borderRadius: "95%",
+              // background: "var(--ww-bg)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -1449,6 +1468,7 @@ function ParentLogin() {
               size="lg"
               disabled={loginLoading}
               style={{ marginTop: 4 }}
+              variant="admin"
             >
               {loginLoading ? "Logging in…" : "Log In"}
             </Btn>
@@ -1465,7 +1485,7 @@ function ParentLogin() {
                 style={{
                   background: "none",
                   border: "none",
-                  color: "var(--sky-dark)",
+                  color: "var(--sky-dark-bg)",
                   fontWeight: 700,
                   cursor: "pointer",
                   fontSize: 12,
@@ -1491,7 +1511,7 @@ function ParentLogin() {
                   style={{
                     background: "none",
                     border: "none",
-                    color: "var(--sky-dark)",
+                    color: "var(--sky-dark-bg)",
                     fontWeight: 700,
                     fontSize: 11,
                     cursor: "pointer",
@@ -1567,7 +1587,7 @@ function ParentLogin() {
                 style={{
                   background: "none",
                   border: "none",
-                  color: "var(--sky-dark)",
+                  color: "var(--sky-dark-bg)",
                   fontWeight: 700,
                   cursor: "pointer",
                   fontSize: 12,
@@ -1788,7 +1808,7 @@ function ProductImageGallery({
                 height: 44,
                 borderRadius: 6,
                 overflow: "hidden",
-                border: `2px solid ${i === activeIdx ? "var(--sky-dark)" : "transparent"}`,
+                border: `2px solid ${i === activeIdx ? "var(--sky-dark-bg)" : "transparent"}`,
                 background: "none",
                 padding: 0,
                 cursor: "pointer",
@@ -1898,7 +1918,7 @@ function ImageUploader({ images = [], onChange, onNewFiles }) {
                 height: 72,
                 borderRadius: 8,
                 overflow: "hidden",
-                border: `2px solid ${i === 0 ? "var(--sky-dark)" : type === "pending" ? "var(--sky-mid)" : "var(--border)"}`,
+                border: `2px solid ${i === 0 ? "var(--sky-dark-bg)" : type === "pending" ? "var(--sky-mid)" : "var(--border)"}`,
               }}
             >
               <img
@@ -2130,7 +2150,7 @@ function ParentHome() {
             fontFamily: "var(--font-display)",
             fontWeight: 700,
             fontSize: 20,
-            color: "var(--sky-dark)",
+            color: "var(--sky-dark-bg)",
             marginBottom: 4,
           }}
         >
@@ -2151,7 +2171,7 @@ function ParentHome() {
               display: "inline-flex",
               alignItems: "center",
               gap: 6,
-              background: "var(--sky-dark)",
+              background: "var(--sky-dark-bg)",
               color: "#fff",
               padding: "5px 14px",
               borderRadius: 30,
@@ -2179,8 +2199,8 @@ function ParentHome() {
               fontWeight: 700,
               cursor: "pointer",
               border: "1.5px solid",
-              borderColor: cat === c ? "var(--sky-dark)" : "var(--border)",
-              background: cat === c ? "var(--sky-dark)" : "var(--bg)",
+              borderColor: cat === c ? "var(--sky-dark-bg)" : "var(--border)",
+              background: cat === c ? "var(--sky-dark-bg)" : "var(--bg)",
               color: cat === c ? "#fff" : "var(--text2)",
               transition: "all .15s",
             }}
@@ -2736,7 +2756,7 @@ function ParentCart() {
                   </span>
                 </span>
                 <span style={{ color: "var(--peach-dark)", fontWeight: 700 }}>
-                  −${discountAmount.toFixed(2)}
+                  −${isNaN(discountAmount) ? "0.00" : discountAmount.toFixed(2)}
                 </span>
               </div>
             </>
@@ -3091,7 +3111,12 @@ function ParentOrders() {
                 }}
               >
                 <span>Discount (15%)</span>
-                <span>−${detail.discountAmount.toFixed(2)}</span>
+                <span>
+                  −$
+                  {isNaN(detail.discountAmount)
+                    ? "0.00"
+                    : detail.discountAmount}
+                </span>
               </div>
             )}
             <div
@@ -4051,6 +4076,7 @@ function AdminInventory() {
   const [filter, setFilter] = useState("");
   const [apiRows, setApiRows] = useState(null);
   const [saving, setSaving] = useState({});
+  const [editingRow, setEditingRow] = useState(null); // { invId, value }
 
   useEffect(() => {
     api("/api/admin/inventory")
@@ -4090,11 +4116,15 @@ function AdminInventory() {
       )
     : rows;
 
-  async function updateTotal(row, val) {
-    const newTotal = Math.max(parseInt(val) || 0, row.reserved);
-    const key = `${row.product.id}-${row.size}`;
+  function startEdit(r) {
+    setEditingRow({ invId: r.invId, value: String(r.total) });
+  }
+
+  async function saveEdit(row) {
+    if (!editingRow) return;
+    const newTotal = Math.max(parseInt(editingRow.value) || 0, 0);
+    const key = row.invId;
     setSaving((s) => ({ ...s, [key]: true }));
-    // Optimistic local update
     setApiRows((prev) =>
       prev
         ? prev.map((r) =>
@@ -4120,6 +4150,10 @@ function AdminInventory() {
           method: "PUT",
           body: { totalQty: newTotal },
         });
+        dispatch({
+          type: "SET_TOAST",
+          message: `Updated: ${row.product.name} ${row.size} → ${newTotal}`,
+        });
       }
     } catch (err) {
       dispatch({
@@ -4132,9 +4166,9 @@ function AdminInventory() {
         delete n[key];
         return n;
       });
+      setEditingRow(null);
     }
   }
-
   function exportCSV() {
     window.open(`${API_BASE_URL}/api/admin/inventory/export`, "_blank");
   }
@@ -4306,22 +4340,81 @@ function AdminInventory() {
                     borderBottom: "0.5px solid var(--border)",
                   }}
                 >
-                  <input
-                    type="number"
-                    defaultValue={r.total}
-                    min={r.reserved}
-                    onChange={(e) => updateTotal(r, e.target.value)}
-                    style={{
-                      width: 64,
-                      padding: "5px 8px",
-                      border: "1px solid var(--border)",
-                      borderRadius: "var(--radius-xs)",
-                      fontSize: 12,
-                      background: "var(--bg)",
-                      color: "var(--text)",
-                      outline: "none",
-                    }}
-                  />
+                  {editingRow?.invId === r.invId ? (
+                    <div
+                      style={{ display: "flex", gap: 6, alignItems: "center" }}
+                    >
+                      <input
+                        type="number"
+                        value={editingRow?.value}
+                        min={0}
+                        autoFocus
+                        onChange={(e) =>
+                          setEditingRow({
+                            ...editingRow,
+                            value: e.target.value,
+                          })
+                        }
+                        style={{
+                          width: 64,
+                          padding: "5px 8px",
+                          border: "1px solid var(--sky-dark)",
+                          borderRadius: "var(--radius-xs)",
+                          fontSize: 12,
+                          background: "var(--bg)",
+                          color: "var(--text)",
+                          outline: "none",
+                        }}
+                      />
+                      <button
+                        onClick={() => saveEdit(r)}
+                        disabled={saving[r.invId]}
+                        style={{
+                          padding: "5px 10px",
+                          border: "none",
+                          borderRadius: "var(--radius-xs)",
+                          fontSize: 11,
+                          fontWeight: 700,
+                          background: "var(--sky-dark)",
+                          color: "#fff",
+                          cursor: "pointer",
+                        }}
+                      >
+                        {saving[r.invId] ? "Saving…" : "Save"}
+                      </button>
+                      <button
+                        onClick={() => setEditingRow(null)}
+                        style={{
+                          padding: "5px 8px",
+                          border: "1px solid var(--border)",
+                          borderRadius: "var(--radius-xs)",
+                          fontSize: 11,
+                          fontWeight: 700,
+                          background: "var(--bg)",
+                          color: "var(--text2)",
+                          cursor: "pointer",
+                        }}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => startEdit(r)}
+                      style={{
+                        padding: "5px 10px",
+                        border: "1px solid var(--border)",
+                        borderRadius: "var(--radius-xs)",
+                        fontSize: 11,
+                        fontWeight: 700,
+                        background: "var(--bg)",
+                        color: "var(--text2)",
+                        cursor: "pointer",
+                      }}
+                    >
+                      Edit
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}
@@ -4582,7 +4675,7 @@ function AdminOrders() {
                       }}
                     >
                       {/* ${o.totalAmount.toFixed(2)} */}
-                      `${isNaN(amount) ? "0.00" : amount.toFixed(2)}`,
+                      {`${isNaN(amount) ? "0.00" : amount.toFixed(2)}`}
                     </td>
                     <td
                       style={{
@@ -4760,7 +4853,12 @@ function AdminOrders() {
                 <span>
                   Discount ({(detail.discountRate * 100).toFixed(0)}%)
                 </span>
-                <span>−${detail.discountAmount.toFixed(2)}</span>
+                <span>
+                  −$
+                  {isNaN(detail.discountAmount)
+                    ? "0.00"
+                    : detail.discountAmount}
+                </span>
               </div>
             )}
             <div
@@ -6120,7 +6218,7 @@ function AdminShell() {
       <div
         style={{
           width: sidebarOpen ? 160 : 52,
-          background: "var(--sky-dark)",
+          background: "var(--sky-dark-bg)",
           flexShrink: 0,
           transition: "width .2s",
           display: "flex",
@@ -6656,7 +6754,7 @@ export default function App() {
                     fontFamily: "var(--font-display)",
                     fontWeight: 700,
                     fontSize: 20,
-                    color: "var(--sky-dark)",
+                    color: "var(--sky-dark-bg)",
                   }}
                 >
                   Admin Portal
@@ -6706,7 +6804,7 @@ export default function App() {
                   type="submit"
                   style={{
                     padding: "11px",
-                    background: "var(--sky-dark)",
+                    background: "var(--sky-dark-bg)",
                     color: "#fff",
                     border: "none",
                     borderRadius: "var(--radius-sm)",
@@ -6775,11 +6873,11 @@ export default function App() {
                     border: "1.5px solid",
                     borderColor:
                       state.view === "parent"
-                        ? "var(--sky-dark)"
+                        ? "var(--sky-dark-bg)"
                         : "var(--border)",
                     background:
                       state.view === "parent"
-                        ? "var(--sky-dark)"
+                        ? "var(--sky-dark-bg)"
                         : "rgba(255,255,255,.9)",
                     color: state.view === "parent" ? "#fff" : "var(--text2)",
                   }}
@@ -6803,11 +6901,11 @@ export default function App() {
                     border: "1.5px solid",
                     borderColor:
                       state.view === "admin"
-                        ? "var(--sky-dark)"
+                        ? "var(--sky-dark-bg)"
                         : "var(--border)",
                     background:
                       state.view === "admin"
-                        ? "var(--sky-dark)"
+                        ? "var(--sky-dark-bg)"
                         : "rgba(255,255,255,.9)",
                     color: state.view === "admin" ? "#fff" : "var(--text2)",
                   }}
