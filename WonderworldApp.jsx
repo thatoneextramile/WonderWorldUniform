@@ -715,8 +715,8 @@ ${FONTS}
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
   --mint:#e8f7f0; --mint-mid:#3db882; --mint-dark:#1a7a55;
-  --sky-bg:#fdf0e6;      --sky-mid-bg:#e8833a;   --sky-dark-bg:#CC6D1A ;
-   --sky-bg:#fdf0e6;      --sky-mid-bg:#e8833a;   --ww-bg:#FF9E3E ;
+  --sky-bg:#fdf0e6;      --sky-mid-bg:#e8833a;   --sky-dark-bg:#86BAAF ;
+  --sky-bg:#fdf0e6;      --sky-mid-bg:#86BAAF;   --ww-bg:#FF9E3E ;
    --sky:#e6f3fb;  --sky-mid:#4da8da;  --sky-dark:#1a5f8a;
   --peach:#fef0eb;--peach-mid:#f5845a;--peach-dark:#a83d1e;
   --lemon:#fdfae7;--lemon-mid:#e8c83a;--lemon-dark:#8a6e0a;
@@ -2454,13 +2454,24 @@ function ParentCart() {
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  const [isFirstOrder, setIsFirstOrder] = useState(true);
   const subtotal = cart.reduce((s, i) => s + i.unitPrice * i.quantity, 0);
   const threshold = settings.discountThreshold;
-  const discountRate = subtotal >= threshold ? settings.discountRate : 0;
+  const discountRate =
+    subtotal >= threshold && isFirstOrder ? settings.discountRate || 0.15 : 0;
   const discountAmount = subtotal * discountRate;
   const total = subtotal - discountAmount;
 
   const visibleFields = formFields.filter((f) => f.isVisible);
+
+  useEffect(() => {
+    api("/api/orders/mine")
+      .then((orders) => {
+        const active = orders.filter((o) => o.status !== "CANCELLED");
+        setIsFirstOrder(active.length === 0);
+      })
+      .catch(() => {});
+  }, []);
 
   async function handleSubmit() {
     if (submitting) return;
@@ -2560,6 +2571,22 @@ function ParentCart() {
         </Btn>
       </div>
     );
+
+  const DiscountMsg = () => {
+    if (subtotal >= threshold && isFirstOrder) {
+      return (
+        <span style={{ color: "var(--sky-dark)", fontWeight: 700 }}>
+          🎉 15% first-order discount applied!
+        </span>
+      );
+    } else
+      return (
+        <span>
+          💡 Add ${(threshold - subtotal).toFixed(2)} more to unlock 15% off
+          your first order!
+        </span>
+      );
+  };
 
   return (
     <div
@@ -2770,8 +2797,7 @@ function ParentCart() {
                 marginBottom: 4,
               }}
             >
-              💡 Add ${(threshold - subtotal).toFixed(2)} more to unlock 15%
-              off!
+              {DiscountMsg()}
             </div>
           )}
           <div
