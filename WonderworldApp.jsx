@@ -2150,7 +2150,7 @@ function ParentHome() {
             fontFamily: "var(--font-display)",
             fontWeight: 700,
             fontSize: 20,
-            color: "var(--sky-dark-bg)",
+            color: "var(--text)",
             marginBottom: 4,
           }}
         >
@@ -2159,7 +2159,7 @@ function ParentHome() {
         <p
           style={{
             fontSize: 13,
-            color: "rgba(255,255,255,.88)",
+            color: "var(--text)",
             lineHeight: 1.5,
           }}
         >
@@ -2457,21 +2457,26 @@ function ParentCart() {
   const [isFirstOrder, setIsFirstOrder] = useState(true);
   const subtotal = cart.reduce((s, i) => s + i.unitPrice * i.quantity, 0);
   const threshold = settings.discountThreshold;
+  const childNameFilled = form.childName?.trim().length > 0;
   const discountRate =
-    subtotal >= threshold && isFirstOrder ? settings.discountRate || 0.15 : 0;
+    subtotal >= threshold && isFirstOrder && childNameFilled
+      ? settings.discountRate || 0.15
+      : 0;
   const discountAmount = subtotal * discountRate;
   const total = subtotal - discountAmount;
 
   const visibleFields = formFields.filter((f) => f.isVisible);
 
   useEffect(() => {
-    api("/api/orders/mine")
-      .then((orders) => {
-        const active = orders.filter((o) => o.status !== "CANCELLED");
-        setIsFirstOrder(active.length === 0);
-      })
-      .catch(() => {});
-  }, []);
+    const name = form.childName?.trim();
+    if (!name) {
+      setIsFirstOrder(true); // unknown yet, assume eligible
+      return;
+    }
+    api(`/api/orders/check-first-order?childName=${encodeURIComponent(name)}`)
+      .then((data) => setIsFirstOrder(data.isFirstOrder))
+      .catch(() => setIsFirstOrder(true));
+  }, [form.childName]);
 
   async function handleSubmit() {
     if (submitting) return;
@@ -2573,17 +2578,25 @@ function ParentCart() {
     );
 
   const DiscountMsg = () => {
-    if (subtotal >= threshold && isFirstOrder) {
-      return (
-        <span style={{ color: "var(--sky-dark)", fontWeight: 700 }}>
-          🎉 15% first-order discount applied!
-        </span>
-      );
+    if (subtotal >= threshold) {
+      if (childNameFilled && isFirstOrder)
+        return (
+          <span style={{ color: "var(--sky-dark)", fontWeight: 700 }}>
+            🎉 15% first-order discount applied!
+          </span>
+        );
+      else
+        return (
+          <span style={{ color: "var(--lemon-dark)", fontWeight: 600 }}>
+            💡 Enter your child's name below to apply the 15% first-order
+            discount
+          </span>
+        );
     } else
       return (
         <span>
-          💡 Add ${(threshold - subtotal).toFixed(2)} more to unlock 15% off
-          your first order!
+          💡 Add ${(threshold - subtotal).toFixed(2)} more to unlock 15% off{" "}
+          first order!
         </span>
       );
   };
@@ -3555,7 +3568,7 @@ function AdminProducts() {
     isActive: true,
   });
   const sizes = ["T1", "T2", "T3", "T4", "T5"];
-  const categories = ["Tops", "Bottoms", "Accessories", "Sets"];
+  const categories = ["All", "Top", "Bottom", "Others"];
 
   function openNew() {
     setEditing(null);
