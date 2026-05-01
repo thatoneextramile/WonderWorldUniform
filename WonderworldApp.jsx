@@ -604,6 +604,8 @@ const INITIAL_SETTINGS = {
   discountThreshold: 500,
   discountRate: 0.15,
   logoEmoji: "🎒",
+  adminEmails: "",
+  orderStockThreshold: 0,
 };
 
 const INITIAL_FORM_FIELDS = [
@@ -5498,7 +5500,31 @@ function AdminMasterControl() {
                 }
                 type="number"
               />
+              <Input
+                label="Minimum Stock Threshold (Orders will be blocked if available stock is at or below this number. Set to 0 to disable.)"
+                value={String(settings.orderStockThreshold ?? 0)}
+                onChange={(v) => {
+                  const num = parseInt(v) || 0;
+                  setSettings({
+                    ...settings,
+                    orderStockThreshold: Math.max(0, num),
+                  });
+                }}
+                type="number"
+                placeholder="0"
+                min={0}
+              />
             </div>
+            <Input
+              label="Admin Notification Emails (semicolon-separated)"
+              value={settings.adminEmails || ""}
+              onChange={(v) => setSettings({ ...settings, adminEmails: v })}
+              placeholder="admin1@school.com; admin2@school.com"
+            />
+            <p style={{ fontSize: 11, color: "var(--text3)", marginTop: -6 }}>
+              These addresses receive new order and status change emails as a
+              fallback. Use Admin Accounts to set per-user preferences instead.
+            </p>
             <Btn variant="admin" onClick={saveSettings} fullWidth>
               Save Branding Settings
             </Btn>
@@ -6775,18 +6801,32 @@ export default function App() {
               <div style={{ textAlign: "center", marginBottom: 24 }}>
                 <div
                   style={{
-                    width: 54,
-                    height: 54,
-                    borderRadius: "50%",
-                    background: "var(--sky)",
+                    width: 60,
+                    height: 60,
+                    //borderRadius: "95%",
+                    // background: "var(--ww-bg)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    fontSize: 24,
+                    fontSize: 28,
                     margin: "0 auto 12px",
+                    overflow: "hidden",
                   }}
                 >
-                  🏫
+                  {/* {state.settings.logoEmoji} */}
+                  {state.settings.logoUrl ? (
+                    <img
+                      src={state.settings.logoUrl}
+                      alt="Logo"
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "contain",
+                      }}
+                    />
+                  ) : (
+                    state.settings.logoEmoji
+                  )}
                 </div>
                 <h1
                   style={{
