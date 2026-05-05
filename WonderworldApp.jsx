@@ -2084,16 +2084,35 @@ function ParentHome() {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [addSize, setAddSize] = useState("");
   const [addQty, setAddQty] = useState(1);
+  const [stockMap, setStockMap] = useState({}); // { "productId-size": availableQty }
   const cats = ["All", "Tops", "Bottoms", "Accessories"];
 
+  useEffect(() => {
+    api("/api/admin/inventory/available")
+      .then((data) => setStockMap(data))
+      .catch(() => {});
+  }, []);
   // Products come from initAppData via SET_INITIAL_DATA.
   // Show a loading message until at least one product arrives.
   const productsLoaded = state.products.length > 0;
   const filtered = state.products.filter(
     (p) => p.isActive && (cat === "All" || p.category === cat),
   );
+  const orderStockThreshold = state.settings.orderStockThreshold ?? 0;
 
   function handleAddToCart() {
+    console.log(orderStockThreshold);
+    // ── Minimum Order Stock check ──
+    if (orderStockThreshold > 0) {
+      const available = stockMap[`${selectedProduct.id}-${addSize}`];
+      if (available !== undefined && available <= orderStockThreshold) {
+        dispatch({
+          type: "SET_TOAST",
+          message: `Sorry, ${selectedProduct.name} (${addSize}) is currently unavailable for ordering.`,
+        });
+        return;
+      }
+    }
     if (!addSize) {
       dispatch({ type: "SET_TOAST", message: "Please select a size" });
       return;
@@ -4958,6 +4977,7 @@ function AdminMasterControl() {
   const [fields, setFields] = useState([...state.formFields]);
   const [newLocName, setNewLocName] = useState("");
   const [tab, setTab] = useState("locations");
+  const [pendingLogo, setPendingLogo] = useState(null); // { file, previewUrl }
 
   // Re-sync local state if the global state loads fresh data from the API
   useEffect(() => {
@@ -4979,6 +4999,15 @@ function AdminMasterControl() {
 
   async function saveSettings() {
     try {
+      // Upload pending logo first if one was selected
+      if (pendingLogo) {
+        const fd = new FormData();
+        fd.append("logo", pendingLogo.file);
+        const result = await apiUpload("/api/admin/settings/logo", fd);
+        settings.logoUrl = result.logoUrl;
+        URL.revokeObjectURL(pendingLogo.previewUrl);
+        setPendingLogo(null);
+      }
       const saved = await api("/api/admin/settings", {
         method: "PUT",
         body: { ...settings },
@@ -5333,7 +5362,7 @@ function AdminMasterControl() {
               >
                 Logo Image (overrides emoji)
               </label>
-              {settings.logoUrl && (
+              {(pendingLogo || settings.logoUrl) && (
                 <div
                   style={{
                     display: "flex",
@@ -5343,8 +5372,10 @@ function AdminMasterControl() {
                   }}
                 >
                   <img
-                    src={settings.logoUrl}
-                    alt="Logo"
+                    src={
+                      pendingLogo ? pendingLogo.previewUrl : settings.logoUrl
+                    }
+                    alt="Logo preview"
                     style={{
                       width: 56,
                       height: 56,
@@ -5355,8 +5386,25 @@ function AdminMasterControl() {
                       padding: 4,
                     }}
                   />
+                  {pendingLogo && (
+                    <span
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 700,
+                        color: "var(--peach-dark)",
+                        background: "var(--peach)",
+                        padding: "2px 7px",
+                        borderRadius: 30,
+                      }}
+                    >
+                      UNSAVED
+                    </span>
+                  )}
                   <button
-                    onClick={() => setSettings({ ...settings, logoUrl: "" })}
+                    onClick={() => {
+                      setPendingLogo(null);
+                      setSettings({ ...settings, logoUrl: "" });
+                    }}
                     style={{
                       padding: "4px 10px",
                       border: "none",
@@ -5388,25 +5436,10 @@ function AdminMasterControl() {
                   e.preventDefault();
                   const file = e.dataTransfer.files[0];
                   if (!file) return;
-                  const fd = new FormData();
-                  fd.append("logo", file);
-                  try {
-                    const result = await apiUpload(
-                      "/api/admin/settings/logo",
-                      fd,
-                    );
-                    setSettings((s) => ({ ...s, logoUrl: result.logoUrl }));
-                    dispatch({
-                      type: "UPDATE_SETTINGS",
-                      settings: { logoUrl: result.logoUrl },
-                    });
-                    dispatch({ type: "SET_TOAST", message: "Logo uploaded!" });
-                  } catch (err) {
-                    dispatch({
-                      type: "SET_TOAST",
-                      message: err.message || "Upload failed",
-                    });
-                  }
+                  setPendingLogo({
+                    file,
+                    previewUrl: URL.createObjectURL(file),
+                  });
                 }}
               >
                 <span style={{ fontSize: 18 }}>🖼️</span>
@@ -5420,28 +5453,10 @@ function AdminMasterControl() {
                   onChange={async (e) => {
                     const file = e.target.files[0];
                     if (!file) return;
-                    const fd = new FormData();
-                    fd.append("logo", file);
-                    try {
-                      const result = await apiUpload(
-                        "/api/admin/settings/logo",
-                        fd,
-                      );
-                      setSettings((s) => ({ ...s, logoUrl: result.logoUrl }));
-                      dispatch({
-                        type: "UPDATE_SETTINGS",
-                        settings: { logoUrl: result.logoUrl },
-                      });
-                      dispatch({
-                        type: "SET_TOAST",
-                        message: "Logo uploaded!",
-                      });
-                    } catch (err) {
-                      dispatch({
-                        type: "SET_TOAST",
-                        message: err.message || "Upload failed",
-                      });
-                    }
+                    setPendingLogo({
+                      file,
+                      previewUrl: URL.createObjectURL(file),
+                    });
                   }}
                 />
               </label>
