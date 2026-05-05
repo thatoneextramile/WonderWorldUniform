@@ -4136,7 +4136,7 @@ function AdminInventory() {
   const [filter, setFilter] = useState("");
   const [apiRows, setApiRows] = useState(null);
   const [saving, setSaving] = useState({});
-  const [editingRow, setEditingRow] = useState(null); // { invId, value }
+  const [editingRow, setEditingRow] = useState(null); // { invId, field, value }
 
   useEffect(() => {
     api("/api/admin/inventory")
@@ -4144,37 +4144,43 @@ function AdminInventory() {
       .catch(() => {});
   }, []);
 
-  const rows = apiRows
+  // Flatten all rows with product info
+  const allRows = apiRows
     ? apiRows.map((i) => ({
         invId: i.id,
-        product: { id: i.productId, name: i.product?.name || "" },
+        productId: i.productId,
+        productName: i.product?.name || "",
+        productImage: i.product?.imageUrls?.[0] || i.product?.imageUrl || null,
+        productEmoji: i.product?.imageEmoji || "👕",
         size: i.size,
         total: i.totalQty,
         reserved: i.reservedQty,
-        available: i.availableQty,
+        available: i.availableQty ?? (i.totalQty - i.reservedQty),
+        sold: Math.max(0, i.soldQty || 0),
       }))
-    : state.products
-        .filter((p) => p.isActive)
-        .flatMap((p) =>
-          p.sizes.map((s) => {
-            const inv = state.inventory[p.id]?.[s] || { total: 0, reserved: 0 };
-            return {
-              product: p,
-              size: s,
-              total: inv.total,
-              reserved: inv.reserved,
-              available: inv.total - inv.reserved,
-            };
-          }),
-        );
+    : [];
 
+  // Filter by search text
   const filtered = filter
-    ? rows.filter(
-        (r) =>
-          r.product.name.toLowerCase().includes(filter.toLowerCase()) ||
-          r.size === filter,
-      )
-    : rows;
+    ? allRows.filter((r) => r.productName.toLowerCase().includes(filter.toLowerCase()))
+    : allRows;
+
+  // Collect all unique sizes (sorted) for column headers
+  const allSizes = [...new Set(filtered.map((r) => r.size))].sort();
+
+  // Group by product name
+  const grouped = filtered.reduce((acc, r) => {
+    if (!acc[r.productName]) {
+      acc[r.productName] = {
+        productId: r.productId,
+        productImage: r.productImage,
+        productEmoji: r.productEmoji,
+        rows: {},
+      };
+    }
+    acc[r.productName].rows[r.size] = r;
+    return acc;
+  }, {});
 
   function startEdit(r) {
     setEditingRow({ invId: r.invId, value: String(r.total) });
@@ -4182,305 +4188,223 @@ function AdminInventory() {
 
   async function saveEdit(row) {
     if (!editingRow) return;
-    const newTotal = Math.max(parseInt(editingRow.value) || 0, 0);
+    const newTotal = parseInt(editingRow.value) || 0;
     const key = row.invId;
     setSaving((s) => ({ ...s, [key]: true }));
     setApiRows((prev) =>
       prev
         ? prev.map((r) =>
             r.id === row.invId
-              ? {
-                  ...r,
-                  totalQty: newTotal,
-                  availableQty: newTotal - r.reservedQty,
-                }
+              ? { ...r, totalQty: newTotal, availableQty: newTotal - r.reservedQty }
               : r,
           )
         : prev,
     );
-    dispatch({
-      type: "UPDATE_INVENTORY",
-      productId: row.product.id,
-      size: row.size,
-      inv: { total: newTotal, reserved: row.reserved },
-    });
+    dispatch({ type: "UPDATE_INVENTORY", productId: row.productId, size: row.size, inv: { total: newTotal, reserved: row.reserved } });
     try {
       if (row.invId) {
-        await api(`/api/admin/inventory/${row.invId}`, {
-          method: "PUT",
-          body: { totalQty: newTotal },
-        });
-        dispatch({
-          type: "SET_TOAST",
-          message: `Updated: ${row.product.name} ${row.size} → ${newTotal}`,
-        });
+        await api(`/api/admin/inventory/${row.invId}`, { method: "PUT", body: { totalQty: newTotal } });
+        dispatch({ type: "SET_TOAST", message: `Updated: ${row.productName} ${row.size} → ${newTotal}` });
       }
     } catch (err) {
-      dispatch({
-        type: "SET_TOAST",
-        message: err.message || "Failed to update inventory",
-      });
+      dispatch({ type: "SET_TOAST", message: err.message || "Failed to update inventory" });
     } finally {
-      setSaving((s) => {
-        const n = { ...s };
-        delete n[key];
-        return n;
-      });
+      setSaving((s) => { const n = { ...s }; delete n[key]; return n; });
       setEditingRow(null);
     }
   }
+
   function exportCSV() {
     window.open(`${API_BASE_URL}/api/admin/inventory/export`, "_blank");
   }
 
+  // Shared styles
+  const metricLabel = { fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".05em", color: "#888", marginBottom: 1 };
+  const metricValue = { fontSize: 12, fontWeight: 700, color: "var(--text)" };
+
   return (
     <div className="animate-fade">
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "flex-end",
-          marginBottom: 14,
-        }}
-      >
-        <Btn variant="admin" size="sm" onClick={exportCSV}>
-          Export CSV
-        </Btn>
+      {/* Toolbar */}
+      <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 14, flexWrap: "wrap" }}>
+        <div style={{ position: "relative", flex: 1, minWidth: 160 }}>
+          <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", fontSize: 12, color: "var(--text3)" }}>🔍</span>
+          <input
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            placeholder="Search products…"
+            style={{ width: "100%", padding: "8px 12px 8px 30px", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", fontSize: 13, background: "var(--bg)", color: "var(--text)", outline: "none" }}
+          />
+        </div>
+        <Btn variant="admin" size="sm" onClick={exportCSV}>⬆ Export</Btn>
       </div>
-      <div
-        style={{
-          background: "var(--lemon)",
-          border: "1px solid var(--lemon-mid)",
-          borderRadius: "var(--radius-sm)",
-          padding: "10px 14px",
-          fontSize: 12,
-          color: "var(--lemon-dark)",
-          fontWeight: 600,
-          marginBottom: 12,
-          lineHeight: 1.5,
-        }}
-      >
-        📋 <strong>Submitted / Review</strong> → reserves stock &nbsp;|&nbsp;{" "}
-        <strong>Ready for Pick Up</strong> → deducts from total &nbsp;|&nbsp;{" "}
+
+      {/* Info strip */}
+      <div style={{ background: "var(--lemon)", border: "1px solid var(--lemon-mid)", borderRadius: "var(--radius-sm)", padding: "8px 14px", fontSize: 11, color: "var(--lemon-dark)", fontWeight: 600, marginBottom: 14, lineHeight: 1.6 }}>
+        📋 <strong>Submitted / Review</strong> → reserves stock &nbsp;|&nbsp;
+        <strong>Ready for Pick Up</strong> → deducts from total &nbsp;|&nbsp;
         <strong>Cancelled</strong> → restores stock
       </div>
-      <div style={{ marginBottom: 10 }}>
-        <input
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          placeholder="Filter by product name…"
-          style={{
-            width: "100%",
-            padding: "8px 12px",
-            border: "1px solid var(--border)",
-            borderRadius: "var(--radius-sm)",
-            fontSize: 13,
-            background: "var(--bg)",
-            color: "var(--text)",
-            outline: "none",
-          }}
-        />
-      </div>
-      <div style={{ overflowX: "auto" }}>
-        <table
-          style={{
-            width: "100%",
-            borderCollapse: "collapse",
-            fontSize: 12,
-            minWidth: 480,
-          }}
-        >
-          <thead>
-            <tr>
-              {[
-                "Product · Size",
-                "Total Stock",
-                "Reserved",
-                "Available",
-                "Update",
-              ].map((h) => (
-                <th
-                  key={h}
-                  className="txt-th"
-                  style={{
-                    padding: "7px 10px",
-                    textAlign: "left",
-                    background: "var(--bg2)",
-                    borderBottom: "1px solid var(--border)",
-                  }}
-                >
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((r, i) => (
-              <tr key={i}>
-                <td
-                  style={{
-                    padding: "9px 10px",
-                    borderBottom: "0.5px solid var(--border)",
-                    fontWeight: 700,
-                  }}
-                >
-                  <span>{r.product.name}</span>{" "}
-                  <span
-                    style={{
-                      fontSize: 11,
-                      background: "var(--bg3)",
-                      padding: "2px 6px",
-                      borderRadius: 4,
-                      fontWeight: 700,
-                      marginLeft: 4,
-                    }}
-                  >
-                    {r.size}
-                  </span>
-                </td>
-                <td
-                  style={{
-                    padding: "9px 10px",
-                    borderBottom: "0.5px solid var(--border)",
-                  }}
-                >
-                  <span
-                    style={{
-                      background: "var(--sky)",
-                      color: "var(--sky-dark)",
-                      padding: "3px 9px",
-                      borderRadius: 30,
-                      fontSize: 11,
-                      fontWeight: 800,
-                    }}
-                  >
-                    {r.total}
-                  </span>
-                </td>
-                <td
-                  style={{
-                    padding: "9px 10px",
-                    borderBottom: "0.5px solid var(--border)",
-                  }}
-                >
-                  <span
-                    style={{
-                      background: "var(--lemon)",
-                      color: "var(--lemon-dark)",
-                      padding: "3px 9px",
-                      borderRadius: 30,
-                      fontSize: 11,
-                      fontWeight: 800,
-                    }}
-                  >
-                    {r.reserved}
-                  </span>
-                </td>
-                <td
-                  style={{
-                    padding: "9px 10px",
-                    borderBottom: "0.5px solid var(--border)",
-                  }}
-                >
-                  <span
-                    style={{
-                      background: "var(--sky)",
-                      color: "var(--sky-dark)",
-                      padding: "3px 9px",
-                      borderRadius: 30,
-                      fontSize: 11,
-                      fontWeight: 800,
-                    }}
-                  >
-                    {r.available}
-                  </span>
-                </td>
-                <td
-                  style={{
-                    padding: "9px 10px",
-                    borderBottom: "0.5px solid var(--border)",
-                  }}
-                >
-                  {editingRow?.invId === r.invId ? (
-                    <div
-                      style={{ display: "flex", gap: 6, alignItems: "center" }}
-                    >
-                      <input
-                        type="number"
-                        value={editingRow?.value}
-                        min={0}
-                        autoFocus
-                        onChange={(e) =>
-                          setEditingRow({
-                            ...editingRow,
-                            value: e.target.value,
-                          })
-                        }
-                        style={{
-                          width: 64,
-                          padding: "5px 8px",
-                          border: "1px solid var(--sky-dark)",
-                          borderRadius: "var(--radius-xs)",
-                          fontSize: 12,
-                          background: "var(--bg)",
-                          color: "var(--text)",
-                          outline: "none",
-                        }}
-                      />
-                      <button
-                        onClick={() => saveEdit(r)}
-                        disabled={saving[r.invId]}
-                        style={{
-                          padding: "5px 10px",
-                          border: "none",
-                          borderRadius: "var(--radius-xs)",
-                          fontSize: 11,
-                          fontWeight: 700,
-                          background: "var(--sky-dark)",
-                          color: "#fff",
-                          cursor: "pointer",
-                        }}
-                      >
-                        {saving[r.invId] ? "Saving…" : "Save"}
-                      </button>
-                      <button
-                        onClick={() => setEditingRow(null)}
-                        style={{
-                          padding: "5px 8px",
-                          border: "1px solid var(--border)",
-                          borderRadius: "var(--radius-xs)",
-                          fontSize: 11,
-                          fontWeight: 700,
-                          background: "var(--bg)",
-                          color: "var(--text2)",
-                          cursor: "pointer",
-                        }}
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => startEdit(r)}
-                      style={{
-                        padding: "5px 10px",
-                        border: "1px solid var(--border)",
-                        borderRadius: "var(--radius-xs)",
-                        fontSize: 11,
-                        fontWeight: 700,
-                        background: "var(--bg)",
-                        color: "var(--text2)",
-                        cursor: "pointer",
-                      }}
-                    >
-                      Edit
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+
+      {/* Matrix table */}
+      {allRows.length === 0 ? (
+        <div style={{ textAlign: "center", padding: 40, color: "var(--text3)", fontSize: 13 }}>
+          {apiRows === null ? "Loading inventory…" : "No inventory found."}
+        </div>
+      ) : (
+        <div style={{ display: "flex", gap: 20, alignItems: "flex-start" }}>
+          {/* Main table */}
+          <div style={{ overflowX: "auto", flex: 1 }}>
+            <table style={{ borderCollapse: "collapse", fontSize: 12, background: "var(--bg)", width: "100%", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)" }}>
+              <thead>
+                <tr style={{ background: "var(--bg2)" }}>
+                  {/* Product Name header — sticky */}
+                  <th style={{
+                    padding: "12px 16px", textAlign: "left", fontWeight: 800, fontSize: 12,
+                    color: "var(--text)", minWidth: 180, position: "sticky", left: 0,
+                    background: "var(--bg2)", zIndex: 2,
+                    borderBottom: "2px solid var(--border)", borderRight: "2px solid var(--border)",
+                  }}>
+                    Product Name
+                  </th>
+                  {/* Size headers */}
+                  {allSizes.map((size) => (
+                    <th key={size} style={{
+                      padding: "12px 16px", textAlign: "center", fontWeight: 800, fontSize: 14,
+                      color: "var(--sky-dark)", minWidth: 150,
+                      borderBottom: "2px solid var(--border)", borderRight: "1px solid var(--border)",
+                    }}>
+                      {size}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {Object.entries(grouped).map(([productName, { productId, productImage, productEmoji, rows: sizeMap }], pIdx) => (
+                  <tr key={productName} style={{ background: pIdx % 2 === 0 ? "var(--bg)" : "var(--bg2)", verticalAlign: "top" }}>
+                    {/* Product name cell — sticky */}
+                    <td style={{
+                      padding: "16px", fontWeight: 700, fontSize: 13,
+                      borderBottom: "1px solid var(--border)", borderRight: "2px solid var(--border)",
+                      position: "sticky", left: 0, zIndex: 1,
+                      background: pIdx % 2 === 0 ? "var(--bg)" : "var(--bg2)",
+                      verticalAlign: "middle",
+                    }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        {productImage ? (
+                          <img src={productImage} alt="" style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 8, flexShrink: 0, border: "1px solid var(--border)" }} />
+                        ) : (
+                          <div style={{ width: 40, height: 40, borderRadius: 8, background: "var(--sky)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>
+                            {productEmoji}
+                          </div>
+                        )}
+                        <span style={{ fontSize: 13, fontWeight: 700 }}>{productName}</span>
+                      </div>
+                    </td>
+                    {/* Size cells */}
+                    {allSizes.map((size) => {
+                      const r = sizeMap[size];
+                      if (!r) {
+                        return (
+                          <td key={size} style={{ padding: "16px", textAlign: "center", borderBottom: "1px solid var(--border)", borderRight: "1px solid var(--border)", color: "var(--text3)", fontSize: 18 }}>
+                            —
+                          </td>
+                        );
+                      }
+                      const isEditing = editingRow?.invId === r.invId;
+                      return (
+                        <td key={size} style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", borderRight: "1px solid var(--border)", verticalAlign: "top" }}>
+                          {/* Total Stock */}
+                          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 6 }}>
+                            <div>
+                              <div style={metricLabel}>Total Stock</div>
+                              {isEditing ? (
+                                <div style={{ display: "flex", gap: 4, alignItems: "center", marginTop: 2 }}>
+                                  <input
+                                    type="number"
+                                    value={editingRow.value}
+                                    min={0}
+                                    autoFocus
+                                    onChange={(e) => setEditingRow({ ...editingRow, value: e.target.value })}
+                                    style={{ width: 54, padding: "3px 6px", border: "1px solid var(--sky-dark)", borderRadius: 4, fontSize: 12, outline: "none", background: "var(--bg)", color: "var(--text)" }}
+                                  />
+                                  <button onClick={() => saveEdit(r)} disabled={saving[r.invId]}
+                                    style={{ padding: "3px 7px", border: "none", borderRadius: 4, fontSize: 10, fontWeight: 700, background: "var(--sky-dark)", color: "#fff", cursor: "pointer" }}>
+                                    {saving[r.invId] ? "…" : "✓"}
+                                  </button>
+                                  <button onClick={() => setEditingRow(null)}
+                                    style={{ padding: "3px 6px", border: "1px solid var(--border)", borderRadius: 4, fontSize: 10, background: "var(--bg)", color: "var(--text3)", cursor: "pointer", fontWeight: 700 }}>
+                                    ✕
+                                  </button>
+                                </div>
+                              ) : (
+                                <div style={metricValue}>{r.total}</div>
+                              )}
+                            </div>
+                            {!isEditing && (
+                              <button onClick={() => startEdit(r)} title="Edit total stock"
+                                style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, color: "var(--text3)", padding: "2px", lineHeight: 1, borderRadius: 3 }}>
+                                ✏️
+                              </button>
+                            )}
+                          </div>
+                          {/* Reserved */}
+                          <div style={{ marginBottom: 5 }}>
+                            <div style={metricLabel}>Reserved</div>
+                            <div style={{ ...metricValue, color: r.reserved > 0 ? "var(--lemon-dark)" : "var(--text3)" }}>{r.reserved}</div>
+                          </div>
+                          {/* Available */}
+                          <div style={{ marginBottom: 5 }}>
+                            <div style={metricLabel}>Available</div>
+                            <div style={{ ...metricValue, color: r.available < 0 ? "var(--peach-dark)" : "var(--sky-dark)" }}>{r.available}</div>
+                          </div>
+                          {/* Sold */}
+                          <div>
+                            <div style={metricLabel}>Sold</div>
+                            <div style={{ ...metricValue, color: "var(--text2)" }}>{r.sold}</div>
+                          </div>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Matrix Guide sidebar — matches screenshot */}
+          <div style={{ width: 180, flexShrink: 0, display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ background: "var(--sky)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", padding: "14px 16px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                <span style={{ fontSize: 16, color: "var(--sky-dark)" }}>ℹ️</span>
+                <span style={{ fontWeight: 800, fontSize: 13, color: "var(--sky-dark)" }}>Matrix Guide</span>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <div style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 11, color: "var(--text2)" }}>
+                  <span style={{ fontSize: 14, flexShrink: 0, marginTop: 1 }}>☰</span>
+                  <span>Rows = Product Names</span>
+                </div>
+                <div style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 11, color: "var(--text2)" }}>
+                  <span style={{ fontSize: 14, flexShrink: 0, marginTop: 1 }}>⊞</span>
+                  <span>Columns = Sizes</span>
+                </div>
+                <div style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 11, color: "var(--text2)" }}>
+                  <span style={{ fontSize: 14, flexShrink: 0, marginTop: 1 }}>✏️</span>
+                  <span>Each cell tracks Total Stock / Reserved / Available / Sold</span>
+                </div>
+              </div>
+            </div>
+            <div style={{ background: "var(--lemon)", border: "1px solid var(--lemon-mid)", borderRadius: "var(--radius-sm)", padding: "14px 16px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                <span style={{ fontSize: 16 }}>💡</span>
+                <span style={{ fontWeight: 800, fontSize: 13, color: "var(--lemon-dark)" }}>Note</span>
+              </div>
+              <p style={{ fontSize: 11, color: "var(--text2)", lineHeight: 1.5, margin: 0 }}>
+                Click the pencil icon or value to update any field.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
