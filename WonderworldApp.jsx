@@ -4260,9 +4260,12 @@ function AdminInventory() {
   }
 
   function exportCSV() {
-    window.open(`${API_BASE_URL}/api/admin/inventory/export`, "_blank");
+    const token = localStorage.getItem("ww_token");
+    window.open(
+      `${API_BASE_URL}/api/admin/inventory/export?token=${token}`,
+      "_blank",
+    );
   }
-
   // Shared styles
   const metricLabel = {
     fontSize: 9,
@@ -4934,7 +4937,11 @@ function AdminOrders() {
   });
 
   function exportCSV() {
-    window.open(`${API_BASE_URL}/api/admin/orders/export`, "_blank");
+    const token = localStorage.getItem("ww_token");
+    window.open(
+      `${API_BASE_URL}/api/admin/orders/export?token=${token}`,
+      "_blank",
+    );
   }
 
   async function handleStatusChange(orderId, newStatus) {
