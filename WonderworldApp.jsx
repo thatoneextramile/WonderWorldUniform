@@ -4136,7 +4136,7 @@ function AdminInventory() {
   const [filter, setFilter] = useState("");
   const [apiRows, setApiRows] = useState(null);
   const [saving, setSaving] = useState({});
-  const [editingRow, setEditingRow] = useState(null); // { invId, field, value }
+  const [editingRow, setEditingRow] = useState(null); // { invId, field: "total"|"sold", value
 
   useEffect(() => {
     api("/api/admin/inventory")
@@ -4185,48 +4185,69 @@ function AdminInventory() {
   }, {});
 
   function startEdit(r) {
-    setEditingRow({ invId: r.invId, value: String(r.total) });
+    // Re-read from apiRows to get the freshest value
+    console.log("startEdit", r.total, r.sold, r);
+    const fresh = apiRows?.find((row) => row.id === r.invId);
+    const total = fresh ? fresh.totalQty : r.total;
+    setEditingRow({ invId: r.invId, field: "total", value: String(total) });
+  }
+
+  function startEditSold(r) {
+    const fresh = apiRows?.find((row) => row.id === r.invId);
+    const sold = fresh ? (fresh.soldQty ?? 0) : r.sold;
+    setEditingRow({ invId: r.invId, field: "sold", value: String(sold) });
   }
 
   async function saveEdit(row) {
     if (!editingRow) return;
-    const newTotal = parseInt(editingRow.value) || 0;
     const key = row.invId;
     setSaving((s) => ({ ...s, [key]: true }));
-    setApiRows((prev) =>
-      prev
-        ? prev.map((r) =>
-            r.id === row.invId
-              ? {
-                  ...r,
-                  totalQty: newTotal,
-                  availableQty: newTotal - r.reservedQty,
-                }
-              : r,
-          )
-        : prev,
-    );
-    dispatch({
-      type: "UPDATE_INVENTORY",
-      productId: row.productId,
-      size: row.size,
-      inv: { total: newTotal, reserved: row.reserved },
-    });
     try {
-      if (row.invId) {
+      if (editingRow.field === "total") {
+        const newTotal = parseInt(editingRow.value) || 0;
         await api(`/api/admin/inventory/${row.invId}`, {
           method: "PUT",
           body: { totalQty: newTotal },
         });
+        setApiRows((prev) =>
+          prev
+            ? prev.map((r) =>
+                r.id === row.invId
+                  ? {
+                      ...r,
+                      totalQty: newTotal,
+                      availableQty: newTotal - r.reservedQty,
+                    }
+                  : r,
+              )
+            : prev,
+        );
         dispatch({
           type: "SET_TOAST",
-          message: `Updated: ${row.productName} ${row.size} → ${newTotal}`,
+          message: `Total updated: ${row.productName} ${row.size} → ${newTotal}`,
+        });
+      } else {
+        const newSold = Math.max(0, parseInt(editingRow.value) || 0);
+        await api(`/api/admin/inventory/${row.invId}/sold`, {
+          method: "PUT",
+          body: { soldQty: newSold },
+        });
+        setApiRows((prev) =>
+          prev
+            ? prev.map((r) =>
+                r.id === row.invId ? { ...r, soldQty: newSold } : r,
+              )
+            : prev,
+        );
+        dispatch({
+          type: "SET_TOAST",
+          message: `Sold updated: ${row.productName} ${row.size} → ${newSold}`,
         });
       }
     } catch (err) {
       dispatch({
         type: "SET_TOAST",
-        message: err.message || "Failed to update inventory",
+        message: err.message || "Failed to update",
       });
     } finally {
       setSaving((s) => {
@@ -4501,7 +4522,8 @@ function AdminInventory() {
                             >
                               <div>
                                 <div style={metricLabel}>Total Stock</div>
-                                {isEditing ? (
+                                {editingRow?.invId === r.invId &&
+                                editingRow?.field === "total" ? (
                                   <div
                                     style={{
                                       display: "flex",
@@ -4568,7 +4590,10 @@ function AdminInventory() {
                                   <div style={metricValue}>{r.total}</div>
                                 )}
                               </div>
-                              {!isEditing && (
+                              {!(
+                                editingRow?.invId === r.invId &&
+                                editingRow?.field === "total"
+                              ) && (
                                 <button
                                   onClick={() => startEdit(r)}
                                   title="Edit total stock"
@@ -4619,14 +4644,112 @@ function AdminInventory() {
                             </div>
                             {/* Sold */}
                             <div>
-                              <div style={metricLabel}>Sold</div>
+                              {/* Sold */}
                               <div
                                 style={{
-                                  ...metricValue,
-                                  color: "var(--text2)",
+                                  display: "flex",
+                                  alignItems: "flex-start",
+                                  justifyContent: "space-between",
                                 }}
                               >
-                                {r.sold}
+                                <div>
+                                  <div style={metricLabel}>Sold</div>
+                                  {editingRow?.invId === r.invId &&
+                                  editingRow?.field === "sold" ? (
+                                    <div
+                                      style={{
+                                        display: "flex",
+                                        gap: 4,
+                                        alignItems: "center",
+                                        marginTop: 2,
+                                      }}
+                                    >
+                                      <input
+                                        type="number"
+                                        value={editingRow.value}
+                                        min={0}
+                                        autoFocus
+                                        onChange={(e) =>
+                                          setEditingRow({
+                                            ...editingRow,
+                                            value: e.target.value,
+                                          })
+                                        }
+                                        style={{
+                                          width: 54,
+                                          padding: "3px 6px",
+                                          border: "1px solid var(--sky-dark)",
+                                          borderRadius: 4,
+                                          fontSize: 12,
+                                          outline: "none",
+                                          background: "var(--bg)",
+                                          color: "var(--text)",
+                                        }}
+                                      />
+                                      <button
+                                        onClick={() => saveEdit(r)}
+                                        disabled={saving[r.invId]}
+                                        style={{
+                                          padding: "3px 7px",
+                                          border: "none",
+                                          borderRadius: 4,
+                                          fontSize: 10,
+                                          fontWeight: 700,
+                                          background: "var(--sky-dark)",
+                                          color: "#fff",
+                                          cursor: "pointer",
+                                        }}
+                                      >
+                                        {saving[r.invId] ? "…" : "✓"}
+                                      </button>
+                                      <button
+                                        onClick={() => setEditingRow(null)}
+                                        style={{
+                                          padding: "3px 6px",
+                                          border: "1px solid var(--border)",
+                                          borderRadius: 4,
+                                          fontSize: 10,
+                                          background: "var(--bg)",
+                                          color: "var(--text3)",
+                                          cursor: "pointer",
+                                          fontWeight: 700,
+                                        }}
+                                      >
+                                        ✕
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <div
+                                      style={{
+                                        ...metricValue,
+                                        color: "var(--text2)",
+                                      }}
+                                    >
+                                      {r.sold}
+                                    </div>
+                                  )}
+                                </div>
+                                {!(
+                                  editingRow?.invId === r.invId &&
+                                  editingRow?.field === "sold"
+                                ) && (
+                                  <button
+                                    onClick={() => startEditSold(r)}
+                                    title="Edit sold quantity"
+                                    style={{
+                                      background: "none",
+                                      border: "none",
+                                      cursor: "pointer",
+                                      fontSize: 11,
+                                      color: "var(--text3)",
+                                      padding: "2px",
+                                      lineHeight: 1,
+                                      borderRadius: 3,
+                                    }}
+                                  >
+                                    ✏️
+                                  </button>
+                                )}
                               </div>
                             </div>
                           </td>
