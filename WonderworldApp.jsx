@@ -232,6 +232,28 @@ async function apiUpload(path, formData) {
   return res.json();
 }
 
+function sortSizes(sizes) {
+  if (!sizes || !Array.isArray(sizes)) return [];
+  return [...sizes].sort((a, b) => {
+    const prefixA = a.replace(/\d/g, "");
+    const prefixB = b.replace(/\d/g, "");
+    const numA = parseInt(a.replace(/\D/g, "")) || 0;
+    const numB = parseInt(b.replace(/\D/g, "")) || 0;
+    if (prefixA !== prefixB) return prefixA.localeCompare(prefixB);
+    return numA - numB;
+  });
+}
+
+function useWindowWidth() {
+  const [width, setWidth] = useState(window.innerWidth);
+  useEffect(() => {
+    const handler = () => setWidth(window.innerWidth);
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, []);
+  return width;
+}
+
 // ─── DESIGN TOKENS ────────────────────────────────────────────
 // const FONTS = `@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&family=Quicksand:wght@500;600;700&display=swap');`;
 
@@ -731,6 +753,7 @@ ${FONTS}
   --shadow-lg:0 8px 24px rgba(0,0,0,.10);
   --font-display:'DINPro',Georgia,sans-serif;
   --font-body:'DINPro',system-ui,sans-serif;
+  --font-size-table: 13px;
 }
 body { font-family:var(--font-body); color:var(--text); background:var(--bg2); min-height:100vh; }
 button { cursor:pointer; font-family:var(--font-body); }
@@ -760,7 +783,7 @@ body          { font-size:15px; }
 .txt-stat-val { font-family:var(--font-display); font-size:22px; font-weight:900; }
 .txt-stat-lbl { font-size:10px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--text3); }
 .txt-badge    { font-size:10px; font-weight:800; white-space:nowrap; }
-.txt-th       { font-size:10px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:var(--text3); }
+.txt-th       { font-size:13px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:var(--text3); }
 .txt-card-h3  { font-size:14px; font-weight:700; }
 `;
 
@@ -2086,7 +2109,8 @@ function ParentHome() {
   const [addQty, setAddQty] = useState(1);
   const [stockMap, setStockMap] = useState({}); // { "productId-size": availableQty }
   const cats = ["All", "Tops", "Bottoms", "Accessories"];
-
+  const windowWidth = useWindowWidth();
+  const isDesktop = windowWidth >= 1024;
   useEffect(() => {
     api("/api/admin/inventory/available")
       .then((data) => setStockMap(data))
@@ -2101,7 +2125,6 @@ function ParentHome() {
   const orderStockThreshold = state.settings.orderStockThreshold ?? 0;
 
   function handleAddToCart() {
-    console.log(orderStockThreshold);
     // ── Minimum Order Stock check ──
     if (orderStockThreshold > 0) {
       const available = stockMap[`${selectedProduct.id}-${addSize}`];
@@ -2234,7 +2257,7 @@ function ParentHome() {
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fill,minmax(150px,1fr))",
+          gridTemplateColumns: isDesktop ? "repeat(4, 1fr)" : "1fr 1fr",
           gap: 12,
         }}
       >
@@ -2293,7 +2316,7 @@ function ParentHome() {
                   marginTop: 6,
                 }}
               >
-                {p.sizes.map((s) => (
+                {sortSizes(selectedProduct?.sizes).map((s) => (
                   <span
                     key={s}
                     style={{
@@ -2362,7 +2385,7 @@ function ParentHome() {
               flexWrap: "wrap",
             }}
           >
-            {selectedProduct.sizes.map((s) => (
+            {sortSizes(selectedProduct?.sizes).map((s) => (
               <button
                 key={s}
                 onClick={() => setAddSize(s)}
@@ -3205,6 +3228,8 @@ function ParentOrders() {
 function ParentShell() {
   const { state, dispatch } = useApp();
   const { parentPage, cart } = state;
+  const windowWidth = useWindowWidth();
+  const isDesktop = windowWidth >= 1024; // laptop/desktop breakpoint
   const cartCount = cart.reduce((s, i) => s + i.quantity, 0);
   const tabs = [
     { id: "home", label: "Shop", icon: "🏪" },
@@ -3221,11 +3246,9 @@ function ParentShell() {
   return (
     <div
       style={{
-        minHeight: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        maxWidth: 480,
+        maxWidth: isDesktop ? "100%" : 540,
         margin: "0 auto",
+        width: "100%",
       }}
     >
       {/* Header */}
@@ -3285,19 +3308,48 @@ function ParentShell() {
         </button>
       </div>
       {/* Content */}
-      <div style={{ flex: 1, padding: 16, overflowY: "auto" }}>
+      {/* <div style={{ flex: 1, padding: 16, overflowY: "auto" }}>
+        {parentPage === "home" && <ParentHome />}
+        {parentPage === "cart" && <ParentCart />}
+        {parentPage === "orders" && <ParentOrders />}
+      </div> */}
+      <div
+        style={{
+          flex: 1,
+          overflowY: "auto",
+          padding: isDesktop ? "24px 60px" : "0 0 80px 0",
+          maxWidth: isDesktop ? 1200 : "none",
+          margin: isDesktop ? "0 auto" : 0,
+          width: "100%",
+        }}
+      >
         {parentPage === "home" && <ParentHome />}
         {parentPage === "cart" && <ParentCart />}
         {parentPage === "orders" && <ParentOrders />}
       </div>
       {/* Bottom Nav */}
       <div
+        // style={{
+        //   background: "var(--bg)",
+        //   borderTop: "1px solid var(--border)",
+        //   display: "flex",
+        //   position: "sticky",
+        //   bottom: 0,
+        // }}
         style={{
-          background: "var(--bg)",
-          borderTop: "1px solid var(--border)",
           display: "flex",
-          position: "sticky",
-          bottom: 0,
+          borderTop: isDesktop ? "none" : "1px solid var(--border)",
+          borderBottom: isDesktop ? "1px solid var(--border)" : "none",
+          background: "var(--bg)",
+          position: isDesktop ? "sticky" : "fixed",
+          top: isDesktop ? 0 : "auto",
+          bottom: isDesktop ? "auto" : 0,
+          left: 0,
+          right: 0,
+          zIndex: 100,
+          justifyContent: isDesktop ? "center" : "space-around",
+          gap: isDesktop ? 32 : 0,
+          padding: isDesktop ? "0 40px" : 0,
         }}
       >
         {tabs.map((t) => (
@@ -3744,7 +3796,7 @@ function AdminProducts() {
           style={{
             width: "100%",
             borderCollapse: "collapse",
-            fontSize: 12,
+            // fontSize: "var(--font-size-table)",
             minWidth: 560,
           }}
         >
@@ -3775,7 +3827,7 @@ function AdminProducts() {
               ))}
             </tr>
           </thead>
-          <tbody>
+          <tbody className="txt-base">
             {state.products.map((p) => (
               <tr key={p.id} style={{ transition: "background .15s" }}>
                 <td
@@ -3867,7 +3919,7 @@ function AdminProducts() {
                   }}
                 >
                   <div style={{ display: "flex", gap: 3, flexWrap: "wrap" }}>
-                    {p.sizes.map((s) => (
+                    {sortSizes(p.sizes).map((s) => (
                       <span
                         key={s}
                         style={{
@@ -4071,7 +4123,7 @@ function AdminProducts() {
               Available Sizes
             </div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              {sizes.map((s) => (
+              {sortSizes(sizes).map((s) => (
                 <label
                   key={s}
                   style={{
@@ -4155,7 +4207,7 @@ function AdminInventory() {
         size: i.size,
         total: i.totalQty,
         reserved: i.reservedQty,
-        available: i.availableQty ?? i.totalQty - i.reservedQty,
+        available: i.totalQty - i.reservedQty - (i.soldQty ?? 0),
         sold: Math.max(0, i.soldQty || 0),
       }))
     : [];
@@ -4216,7 +4268,7 @@ function AdminInventory() {
                   ? {
                       ...r,
                       totalQty: newTotal,
-                      availableQty: newTotal - r.reservedQty,
+                      availableQty: newTotal - r.reservedQty - (r.soldQty ?? 0),
                     }
                   : r,
               )
@@ -4372,11 +4424,10 @@ function AdminInventory() {
                 <tr style={{ background: "var(--bg2)" }}>
                   {/* Product Name header — sticky */}
                   <th
+                    className="txt-th"
                     style={{
                       padding: "12px 16px",
                       textAlign: "left",
-                      fontWeight: 800,
-                      fontSize: 12,
                       color: "var(--text)",
                       minWidth: 180,
                       position: "sticky",
@@ -4392,12 +4443,11 @@ function AdminInventory() {
                   {/* Size headers */}
                   {allSizes.map((size) => (
                     <th
+                      className="txt-th"
                       key={size}
                       style={{
                         padding: "12px 16px",
                         textAlign: "center",
-                        fontWeight: 800,
-                        fontSize: 14,
                         color: "var(--sky-dark)",
                         minWidth: 150,
                         borderBottom: "2px solid var(--border)",
@@ -4427,10 +4477,9 @@ function AdminInventory() {
                     >
                       {/* Product name cell — sticky */}
                       <td
+                        className="txt-base"
                         style={{
                           padding: "16px",
-                          fontWeight: 700,
-                          fontSize: 13,
                           borderBottom: "1px solid var(--border)",
                           borderRight: "2px solid var(--border)",
                           position: "sticky",
@@ -4523,7 +4572,7 @@ function AdminInventory() {
                                 marginBottom: 6,
                               }}
                             >
-                              <div>
+                              <div className="txt-sm">
                                 <div style={metricLabel}>Total Stock</div>
                                 {editingRow?.invId === r.invId &&
                                 editingRow?.field === "total" ? (
@@ -4551,7 +4600,7 @@ function AdminInventory() {
                                         padding: "3px 6px",
                                         border: "1px solid var(--sky-dark)",
                                         borderRadius: 4,
-                                        fontSize: 12,
+                                        // fontSize: 12,
                                         outline: "none",
                                         background: "var(--bg)",
                                         color: "var(--text)",
@@ -4564,7 +4613,7 @@ function AdminInventory() {
                                         padding: "3px 7px",
                                         border: "none",
                                         borderRadius: 4,
-                                        fontSize: 10,
+                                        // fontSize: 10,
                                         fontWeight: 700,
                                         background: "var(--sky-dark)",
                                         color: "#fff",
@@ -4579,7 +4628,7 @@ function AdminInventory() {
                                         padding: "3px 6px",
                                         border: "1px solid var(--border)",
                                         borderRadius: 4,
-                                        fontSize: 10,
+                                        // fontSize: 10,
                                         background: "var(--bg)",
                                         color: "var(--text3)",
                                         cursor: "pointer",
@@ -4604,7 +4653,7 @@ function AdminInventory() {
                                     background: "none",
                                     border: "none",
                                     cursor: "pointer",
-                                    fontSize: 11,
+                                    // fontSize: 11,
                                     color: "var(--text3)",
                                     padding: "2px",
                                     lineHeight: 1,
@@ -5073,6 +5122,7 @@ function AdminOrders() {
                   "Location",
                   "Total",
                   "Status",
+                  "Submitted",
                   "Update",
                 ].map((h) => (
                   <th
@@ -5091,7 +5141,7 @@ function AdminOrders() {
                 ))}
               </tr>
             </thead>
-            <tbody>
+            <tbody className="txt-base">
               {filtered.map((o) => {
                 const amount = parseFloat(o.totalAmount);
                 return (
@@ -5133,7 +5183,7 @@ function AdminOrders() {
                       style={{
                         padding: "9px 10px",
                         borderBottom: "0.5px solid var(--border)",
-                        fontSize: 11,
+                        // fontSize: 11,
                       }}
                     >
                       {state.locations.find((l) => l.id === o.locationId)
@@ -5164,6 +5214,19 @@ function AdminOrders() {
                       style={{
                         padding: "9px 10px",
                         borderBottom: "0.5px solid var(--border)",
+                        color: "var(--text3)",
+                        // fontSize: 12,
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {o.createdAt
+                        ? new Date(o.createdAt).toLocaleDateString()
+                        : "—"}
+                    </td>
+                    <td
+                      style={{
+                        padding: "9px 10px",
+                        borderBottom: "0.5px solid var(--border)",
                       }}
                       onClick={(e) => e.stopPropagation()}
                     >
@@ -5176,7 +5239,7 @@ function AdminOrders() {
                           padding: "4px 8px",
                           border: "1px solid var(--border)",
                           borderRadius: "var(--radius-xs)",
-                          fontSize: 11,
+                          // fontSize: 11,
                           background: "var(--bg)",
                           color: "var(--text)",
                           outline: "none",
@@ -6444,7 +6507,7 @@ function AdminAdmins() {
             ))}
           </tr>
         </thead>
-        <tbody>
+        <tbody className="txt-base">
           {admins.map((a) => {
             const lastSuper = isLastSuperAdmin(a);
             return (
@@ -7070,7 +7133,7 @@ function AdminParents() {
               )}
             </tr>
           </thead>
-          <tbody>
+          <tbody className="txt-base">
             {parents.map((p) => (
               <tr key={p.id}>
                 <td style={{ ...tdStyle, fontWeight: 700 }}>
@@ -7084,7 +7147,7 @@ function AdminParents() {
                       background: "var(--sky)",
                       color: "var(--sky-dark)",
                       fontWeight: 800,
-                      fontSize: 11,
+                      // fontSize: 11,
                       padding: "2px 8px",
                       borderRadius: 30,
                     }}
@@ -7100,7 +7163,7 @@ function AdminParents() {
                     style={{
                       color: p.isActive ? "var(--sky-dark)" : "var(--text3)",
                       fontWeight: 700,
-                      fontSize: 11,
+                      // fontSize: 11,
                     }}
                   >
                     {p.isActive ? "Active" : "Inactive"}
@@ -7114,7 +7177,7 @@ function AdminParents() {
                         padding: "4px 10px",
                         border: "none",
                         borderRadius: 5,
-                        fontSize: 11,
+                        // fontSize: 11,
                         fontWeight: 700,
                         cursor: "pointer",
                         background: "var(--sky)",
@@ -7129,7 +7192,7 @@ function AdminParents() {
                         padding: "4px 10px",
                         border: "none",
                         borderRadius: 5,
-                        fontSize: 11,
+                        // fontSize: 11,
                         fontWeight: 700,
                         cursor: "pointer",
                         background: p.isActive ? "var(--peach)" : "var(--sky)",
