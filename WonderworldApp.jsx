@@ -2108,7 +2108,10 @@ function ParentHome() {
   const [addSize, setAddSize] = useState("");
   const [addQty, setAddQty] = useState(1);
   const [stockMap, setStockMap] = useState({}); // { "productId-size": availableQty }
-  const cats = ["All", "Tops", "Bottoms", "Accessories"];
+  const cats = [
+    "All",
+    ...(state.settings.categories || ["Top", "Bottom", "Others"]),
+  ];
   const windowWidth = useWindowWidth();
   const isDesktop = windowWidth >= 1024;
   useEffect(() => {
@@ -2128,10 +2131,23 @@ function ParentHome() {
     // ── Minimum Order Stock check ──
     if (orderStockThreshold > 0) {
       const available = stockMap[`${selectedProduct.id}-${addSize}`];
-      if (available !== undefined && available <= orderStockThreshold) {
+      // 1. Minimum stock threshold check — block if at or below threshold
+      if (orderStockThreshold > 0 && available <= orderStockThreshold) {
         dispatch({
           type: "SET_TOAST",
           message: `Sorry, ${selectedProduct.name} (${addSize}) is currently unavailable for ordering.`,
+        });
+        return;
+      }
+
+      // 2. Quantity check — block if requested qty exceeds available
+      if (addQty > available) {
+        dispatch({
+          type: "SET_TOAST",
+          message:
+            available === 0
+              ? `${selectedProduct.name} (${addSize}) is out of stock.`
+              : `Only ${available} left in stock for ${selectedProduct.name} (${addSize}).`,
         });
         return;
       }
@@ -4207,7 +4223,7 @@ function AdminInventory() {
         size: i.size,
         total: i.totalQty,
         reserved: i.reservedQty,
-        available: i.totalQty - i.reservedQty - (i.soldQty ?? 0),
+        available: i.totalQty - i.reservedQty,
         sold: Math.max(0, i.soldQty || 0),
       }))
     : [];
@@ -4268,7 +4284,7 @@ function AdminInventory() {
                   ? {
                       ...r,
                       totalQty: newTotal,
-                      availableQty: newTotal - r.reservedQty - (r.soldQty ?? 0),
+                      availableQty: newTotal - r.reservedQty,
                     }
                   : r,
               )
@@ -4280,20 +4296,28 @@ function AdminInventory() {
         });
       } else {
         const newSold = Math.max(0, parseInt(editingRow.value) || 0);
-        await api(`/api/admin/inventory/${row.invId}/sold`, {
+        const result = await api(`/api/admin/inventory/${row.invId}/sold`, {
           method: "PUT",
           body: { soldQty: newSold },
         });
+        // Update both soldQty and totalQty from server response
         setApiRows((prev) =>
           prev
             ? prev.map((r) =>
-                r.id === row.invId ? { ...r, soldQty: newSold } : r,
+                r.id === row.invId
+                  ? {
+                      ...r,
+                      soldQty: result.soldQty,
+                      totalQty: result.totalQty,
+                      availableQty: result.totalQty - result.reservedQty,
+                    }
+                  : r,
               )
             : prev,
         );
         dispatch({
           type: "SET_TOAST",
-          message: `Sold updated: ${row.productName} ${row.size} → ${newSold}`,
+          message: `Sold updated: ${row.productName} ${row.size} → ${newSold} (Total adjusted to ${result.totalQty})`,
         });
       }
     } catch (err) {
