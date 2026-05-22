@@ -3332,7 +3332,7 @@ function ParentShell() {
       <div
         style={{
           flex: 1,
-          overflowY: "auto",
+          overflowY: "visible",
           padding: isDesktop ? "24px 60px" : "0 0 80px 0",
           maxWidth: isDesktop ? 1200 : "none",
           margin: isDesktop ? "0 auto" : 0,
@@ -3357,7 +3357,7 @@ function ParentShell() {
           borderTop: isDesktop ? "none" : "1px solid var(--border)",
           borderBottom: isDesktop ? "1px solid var(--border)" : "none",
           background: "var(--bg)",
-          position: isDesktop ? "sticky" : "fixed",
+          position: isDesktop ? "" : "fixed",
           top: isDesktop ? 0 : "auto",
           bottom: isDesktop ? "auto" : 0,
           left: 0,
@@ -3465,7 +3465,6 @@ function AdminDashboard() {
 
   const maxQty = Math.max(...productQtys.map((p) => p.totalQty), 1);
 
-  console.log(orders);
   return (
     <div className="animate-fade">
       <div
@@ -4214,18 +4213,21 @@ function AdminInventory() {
 
   // Flatten all rows with product info
   const allRows = apiRows
-    ? apiRows.map((i) => ({
-        invId: i.id,
-        productId: i.productId,
-        productName: i.product?.name || "",
-        productImage: i.product?.imageUrls?.[0] || i.product?.imageUrl || null,
-        productEmoji: i.product?.imageEmoji || "👕",
-        size: i.size,
-        total: i.totalQty,
-        reserved: i.reservedQty,
-        available: i.totalQty - i.reservedQty,
-        sold: Math.max(0, i.soldQty || 0),
-      }))
+    ? apiRows
+        .filter((i) => i.product?.isActive !== false)
+        .map((i) => ({
+          invId: i.id,
+          productId: i.productId,
+          productName: i.product?.name || "",
+          productImage:
+            i.product?.imageUrls?.[0] || i.product?.imageUrl || null,
+          productEmoji: i.product?.imageEmoji || "👕",
+          size: i.size,
+          total: i.totalQty,
+          reserved: i.reservedQty,
+          available: i.totalQty - i.reservedQty,
+          sold: Math.max(0, i.soldQty || 0),
+        }))
     : [];
 
   // Filter by search text
