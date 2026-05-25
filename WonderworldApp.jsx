@@ -2737,24 +2737,36 @@ function ParentCart() {
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 <button
-                  onClick={() =>
-                    item.quantity > 1
-                      ? dispatch({
-                          type: "UPDATE_CART_QTY",
-                          index: i,
-                          qty: item.quantity - 1,
-                        })
-                      : dispatch({ type: "REMOVE_FROM_CART", index: i })
-                  }
-                  style={{
-                    width: 24,
-                    height: 24,
-                    borderRadius: 4,
-                    border: "1px solid var(--border)",
-                    background: "var(--bg2)",
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    fontSize: 13,
+                  onClick={() => {
+                    const key = `${item.productId}-${item.size}`;
+                    const newQty = item.quantity - 1;
+
+                    if (newQty < 1) {
+                      // Remove from cart and clear warning
+                      setStockWarnings((w) => {
+                        const n = { ...w };
+                        delete n[key];
+                        return n;
+                      });
+                      dispatch({ type: "REMOVE_FROM_CART", index: i });
+                      return;
+                    }
+
+                    // Decrement and clear warning if now within available stock
+                    const available = stockMap[key];
+                    if (available === undefined || newQty <= available) {
+                      setStockWarnings((w) => {
+                        const n = { ...w };
+                        delete n[key];
+                        return n;
+                      });
+                    }
+
+                    dispatch({
+                      type: "UPDATE_CART_QTY",
+                      index: i,
+                      qty: newQty,
+                    });
                   }}
                 >
                   −
