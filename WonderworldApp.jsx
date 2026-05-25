@@ -2515,6 +2515,8 @@ function ParentCart() {
   const [submitting, setSubmitting] = useState(false);
 
   const [isFirstOrder, setIsFirstOrder] = useState(true);
+  const [stockMap, setStockMap] = useState({}); // { "productId-size": availableQty }
+  const [stockWarnings, setStockWarnings] = useState({}); // { "productId-size": message }
   const subtotal = cart.reduce((s, i) => s + i.unitPrice * i.quantity, 0);
   const threshold = settings.discountThreshold;
   const childNameFilled = form.childName?.trim().length > 0;
@@ -2526,6 +2528,13 @@ function ParentCart() {
   const total = subtotal - discountAmount;
 
   const visibleFields = formFields.filter((f) => f.isVisible);
+  const hasStockWarning = Object.keys(stockWarnings).length > 0;
+
+  useEffect(() => {
+    api("/api/admin/inventory/available")
+      .then((data) => setStockMap(data))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     const name = form.childName?.trim();
@@ -2672,140 +2681,177 @@ function ParentCart() {
           Cart Items ({cart.length})
         </h3>
         {cart.map((item, i) => (
-          <div
-            key={i}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              padding: "10px 0",
-              borderBottom: "1px solid var(--border)",
-            }}
-          >
+          <>
             <div
+              key={i}
               style={{
-                width: 40,
-                height: 40,
-                borderRadius: 8,
-                overflow: "hidden",
-                flexShrink: 0,
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                padding: "10px 0",
+                borderBottom: "1px solid var(--border)",
               }}
             >
-              {item.images && item.images.length > 0 ? (
-                <img
-                  src={item.images[0]}
-                  alt=""
+              <div
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 8,
+                  overflow: "hidden",
+                  flexShrink: 0,
+                }}
+              >
+                {item.images && item.images.length > 0 ? (
+                  <img
+                    src={item.images[0]}
+                    alt=""
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "contain",
+                    }}
+                  />
+                ) : (
+                  <div
+                    style={{
+                      width: 40,
+                      height: 40,
+                      background: item.imageBg,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 20,
+                    }}
+                  >
+                    {item.imageEmoji}
+                  </div>
+                )}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 700, fontSize: 13 }}>
+                  {item.productName}
+                </div>
+                <div style={{ fontSize: 11, color: "var(--text3)" }}>
+                  Size {item.size} · Age {item.size.replace("T", "")}
+                </div>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <button
+                  onClick={() =>
+                    item.quantity > 1
+                      ? dispatch({
+                          type: "UPDATE_CART_QTY",
+                          index: i,
+                          qty: item.quantity - 1,
+                        })
+                      : dispatch({ type: "REMOVE_FROM_CART", index: i })
+                  }
                   style={{
-                    width: "100%",
-                    height: "100%",
-                    objectFit: "contain",
-                  }}
-                />
-              ) : (
-                <div
-                  style={{
-                    width: 40,
-                    height: 40,
-                    background: item.imageBg,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: 20,
+                    width: 24,
+                    height: 24,
+                    borderRadius: 4,
+                    border: "1px solid var(--border)",
+                    background: "var(--bg2)",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    fontSize: 13,
                   }}
                 >
-                  {item.imageEmoji}
-                </div>
-              )}
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 700, fontSize: 13 }}>
-                {item.productName}
+                  −
+                </button>
+                <span
+                  style={{
+                    fontWeight: 700,
+                    fontSize: 13,
+                    minWidth: 16,
+                    textAlign: "center",
+                  }}
+                >
+                  {item.quantity}
+                </span>
+                <button
+                  onClick={() => {
+                    const key = `${item.productId}-${item.size}`;
+                    const available = stockMap[key];
+                    const newQty = item.quantity + 1;
+
+                    if (available !== undefined && newQty > available) {
+                      // Show warning under this item, don't increment
+                      setStockWarnings((w) => ({
+                        ...w,
+                        [key]: `Only ${available} available for ${item.productName} (${item.size})`,
+                      }));
+                      return;
+                    }
+
+                    // Clear any existing warning and increment
+                    setStockWarnings((w) => {
+                      const n = { ...w };
+                      delete n[key];
+                      return n;
+                    });
+                    dispatch({
+                      type: "UPDATE_CART_QTY",
+                      index: i,
+                      qty: newQty,
+                    });
+                  }}
+                  style={{
+                    width: 24,
+                    height: 24,
+                    borderRadius: 4,
+                    border: "1px solid var(--border)",
+                    background: "var(--bg2)",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    fontSize: 13,
+                  }}
+                >
+                  +
+                </button>
               </div>
-              <div style={{ fontSize: 11, color: "var(--text3)" }}>
-                Size {item.size} · Age {item.size.replace("T", "")}
+              <div
+                style={{
+                  fontWeight: 800,
+                  fontSize: 14,
+                  color: "var(--sky-dark)",
+                  minWidth: 56,
+                  textAlign: "right",
+                }}
+              >
+                ${(item.unitPrice * item.quantity).toFixed(2)}
               </div>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <button
-                onClick={() =>
-                  item.quantity > 1
-                    ? dispatch({
-                        type: "UPDATE_CART_QTY",
-                        index: i,
-                        qty: item.quantity - 1,
-                      })
-                    : dispatch({ type: "REMOVE_FROM_CART", index: i })
-                }
+                onClick={() => dispatch({ type: "REMOVE_FROM_CART", index: i })}
                 style={{
-                  width: 24,
-                  height: 24,
-                  borderRadius: 4,
-                  border: "1px solid var(--border)",
-                  background: "var(--bg2)",
-                  fontWeight: 700,
+                  background: "none",
+                  border: "none",
+                  color: "var(--peach-dark)",
                   cursor: "pointer",
-                  fontSize: 13,
+                  fontSize: 16,
+                  padding: "0 4px",
                 }}
               >
-                −
-              </button>
-              <span
-                style={{
-                  fontWeight: 700,
-                  fontSize: 13,
-                  minWidth: 16,
-                  textAlign: "center",
-                }}
-              >
-                {item.quantity}
-              </span>
-              <button
-                onClick={() =>
-                  dispatch({
-                    type: "UPDATE_CART_QTY",
-                    index: i,
-                    qty: item.quantity + 1,
-                  })
-                }
-                style={{
-                  width: 24,
-                  height: 24,
-                  borderRadius: 4,
-                  border: "1px solid var(--border)",
-                  background: "var(--bg2)",
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  fontSize: 13,
-                }}
-              >
-                +
+                ×
               </button>
             </div>
-            <div
-              style={{
-                fontWeight: 800,
-                fontSize: 14,
-                color: "var(--sky-dark)",
-                minWidth: 56,
-                textAlign: "right",
-              }}
-            >
-              ${(item.unitPrice * item.quantity).toFixed(2)}
-            </div>
-            <button
-              onClick={() => dispatch({ type: "REMOVE_FROM_CART", index: i })}
-              style={{
-                background: "none",
-                border: "none",
-                color: "var(--peach-dark)",
-                cursor: "pointer",
-                fontSize: 16,
-                padding: "0 4px",
-              }}
-            >
-              ×
-            </button>
-          </div>
+            {stockWarnings[`${item.productId}-${item.size}`] && (
+              <div
+                key={i}
+                style={{
+                  fontSize: 11,
+                  color: "var(--peach-dark)",
+                  fontWeight: 600,
+                  marginTop: 4,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                }}
+              >
+                ⚠ {stockWarnings[`${item.productId}-${item.size}`]}
+              </div>
+            )}
+          </>
         ))}
         {/* Totals */}
         <div
@@ -2980,10 +3026,14 @@ function ParentCart() {
           onClick={handleSubmit}
           fullWidth
           size="lg"
-          disabled={submitting}
+          disabled={submitting || hasStockWarning}
           style={{ marginTop: 6 }}
         >
-          {submitting ? "Submitting…" : "Submit Order 🎉"}
+          {submitting
+            ? "Submitting…"
+            : hasStockWarning
+              ? "Fix stock issues above"
+              : "Submit Order 🎉"}
         </Btn>
       </Card>
     </div>
@@ -5256,28 +5306,44 @@ function AdminOrders() {
                       }}
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <select
-                        value={o.status}
-                        onChange={(e) =>
-                          handleStatusChange(o.id, e.target.value)
-                        }
-                        style={{
-                          padding: "4px 8px",
-                          border: "1px solid var(--border)",
-                          borderRadius: "var(--radius-xs)",
-                          // fontSize: 11,
-                          background: "var(--bg)",
-                          color: "var(--text)",
-                          outline: "none",
-                          cursor: "pointer",
-                        }}
-                      >
-                        {Object.entries(STATUS_LABELS).map(([k, v]) => (
-                          <option key={k} value={k}>
-                            {v}
-                          </option>
-                        ))}
-                      </select>
+                      {o.status === "CANCELLED" ? (
+                        <span
+                          style={{
+                            fontSize: 11,
+                            color: "var(--text3)",
+                            fontStyle: "italic",
+                            padding: "4px 8px",
+                            background: "var(--bg3)",
+                            borderRadius: "var(--radius-xs)",
+                            display: "inline-block",
+                          }}
+                        >
+                          Locked
+                        </span>
+                      ) : (
+                        <select
+                          value={o.status}
+                          onChange={(e) =>
+                            handleStatusChange(o.id, e.target.value)
+                          }
+                          style={{
+                            padding: "4px 8px",
+                            border: "1px solid var(--border)",
+                            borderRadius: "var(--radius-xs)",
+                            // fontSize: 11,
+                            background: "var(--bg)",
+                            color: "var(--text)",
+                            outline: "none",
+                            cursor: "pointer",
+                          }}
+                        >
+                          {Object.entries(STATUS_LABELS).map(([k, v]) => (
+                            <option key={k} value={k}>
+                              {v}
+                            </option>
+                          ))}
+                        </select>
+                      )}
                     </td>
                   </tr>
                 );
