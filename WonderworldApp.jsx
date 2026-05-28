@@ -3341,6 +3341,7 @@ function ParentShell() {
           position: "sticky",
           top: 0,
           zIndex: 100,
+          flexShrink: 0,
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -3394,11 +3395,12 @@ function ParentShell() {
       <div
         style={{
           flex: 1,
-          overflowY: "visible",
+          overflowY: "auto",
           padding: isDesktop ? "24px 60px" : "0 0 80px 0",
           maxWidth: isDesktop ? 1200 : "none",
           margin: isDesktop ? "0 auto" : 0,
           width: "100%",
+          minHeight: 0,
         }}
       >
         {parentPage === "home" && <ParentHome />}
@@ -4288,7 +4290,7 @@ function AdminInventory() {
           total: i.totalQty,
           reserved: i.reservedQty,
           available: i.totalQty - i.reservedQty,
-          sold: Math.max(0, i.soldQty || 0),
+          sold: i.soldQty ?? 0,
         }))
     : [];
 
@@ -4651,7 +4653,7 @@ function AdminInventory() {
                               verticalAlign: "top",
                             }}
                           >
-                            {/* Total Stock */}
+                            {/* Current Stock */}
                             <div
                               style={{
                                 display: "flex",
@@ -4661,7 +4663,7 @@ function AdminInventory() {
                               }}
                             >
                               <div className="txt-sm">
-                                <div style={metricLabel}>Total Stock</div>
+                                <div style={metricLabel}>Current Stock</div>
                                 {editingRow?.invId === r.invId &&
                                 editingRow?.field === "total" ? (
                                   <div
@@ -4736,7 +4738,7 @@ function AdminInventory() {
                               ) && (
                                 <button
                                   onClick={() => startEdit(r)}
-                                  title="Edit total stock"
+                                  title="Edit current stock"
                                   style={{
                                     background: "none",
                                     border: "none",
@@ -4983,7 +4985,7 @@ function AdminInventory() {
                     ✏️
                   </span>
                   <span>
-                    Each cell tracks Total Stock / Reserved / Available / Sold
+                    Each cell tracks Current Stock / Reserved / Available / Sold
                   </span>
                 </div>
               </div>
@@ -5349,11 +5351,21 @@ function AdminOrders() {
                             cursor: "pointer",
                           }}
                         >
-                          {Object.entries(STATUS_LABELS).map(([k, v]) => (
-                            <option key={k} value={k}>
-                              {v}
-                            </option>
-                          ))}
+                          // Replace with:
+                          {Object.entries(STATUS_LABELS)
+                            .filter(([value]) => {
+                              if (
+                                o.status === "PICKED_UP" &&
+                                value === "CANCELLED"
+                              )
+                                return false;
+                              return true;
+                            })
+                            .map(([value, label]) => (
+                              <option key={value} value={value}>
+                                {label}
+                              </option>
+                            ))}
                         </select>
                       )}
                     </td>
@@ -6943,7 +6955,9 @@ function AdminShell() {
             ☰
           </button>
         </div>
-        <div style={{ flex: 1, padding: "8px 0", overflowY: "auto" }}>
+        <div
+          style={{ flex: 1, padding: "8px 0", overflowY: "auto", minHeight: 0 }}
+        >
           {navItems.map((item, idx) => {
             const showSection = item.section && item.section !== lastSection;
             if (item.section) lastSection = item.section;
@@ -7036,6 +7050,8 @@ function AdminShell() {
           display: "flex",
           flexDirection: "column",
           minWidth: 0,
+          height: "100vh",
+          overflow: "hidden",
         }}
       >
         {/* Admin Top Bar */}
@@ -7085,7 +7101,7 @@ function AdminShell() {
         </div>
 
         {/* Page Content */}
-        <div style={{ flex: 1, padding: 20, overflowY: "auto" }}>
+        <div style={{ flex: 1, padding: 20, overflowY: "auto", minHeight: 0 }}>
           {adminPage === "dashboard" && <AdminDashboard />}
           {adminPage === "parents" && <AdminParents />}
           {adminPage === "products" && <AdminProducts />}
