@@ -2106,6 +2106,7 @@ function ParentHome() {
   const [cat, setCat] = useState("All");
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [addSize, setAddSize] = useState("");
+  const { cart } = state;
   const [addQty, setAddQty] = useState(1);
   const [stockMap, setStockMap] = useState({}); // { "productId-size": availableQty }
   const cats = [
@@ -2141,13 +2142,24 @@ function ParentHome() {
       }
 
       // 2. Quantity check — block if requested qty exceeds available
-      if (addQty > available) {
+      // Check how many are already in the cart for this product+size
+      const existingCartItem = cart.find(
+        (c) => c.productId === selectedProduct.id && c.size === addSize,
+      );
+      const alreadyInCart = existingCartItem ? existingCartItem.quantity : 0;
+      const totalRequested = alreadyInCart + addQty;
+
+      // Block if total requested (cart + new) exceeds available stock
+      if (available !== undefined && totalRequested > available) {
+        const remaining = Math.max(0, available - alreadyInCart);
         dispatch({
           type: "SET_TOAST",
           message:
             available === 0
               ? `${selectedProduct.name} (${addSize}) is out of stock.`
-              : `Only ${available} left in stock for ${selectedProduct.name} (${addSize}).`,
+              : alreadyInCart >= available
+                ? `You already have all available stock (${available}) in your cart for ${selectedProduct.name} (${addSize}).`
+                : `Only ${remaining} more available for ${selectedProduct.name} (${addSize}). You already have ${alreadyInCart} in your cart.`,
         });
         return;
       }
@@ -3395,7 +3407,7 @@ function ParentShell() {
       <div
         style={{
           flex: 1,
-          overflowY: "auto",
+          // overflowY: "auto",
           padding: isDesktop ? "24px 60px" : "0 0 80px 0",
           maxWidth: isDesktop ? 1200 : "none",
           margin: isDesktop ? "0 auto" : 0,
@@ -5320,7 +5332,7 @@ function AdminOrders() {
                       }}
                       onClick={(e) => e.stopPropagation()}
                     >
-                      {o.status === "CANCELLED" ? (
+                      {o.status === "CANCELLED" || o.status === "PICKED_UP" ? (
                         <span
                           style={{
                             fontSize: 11,
