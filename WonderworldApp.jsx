@@ -194,6 +194,7 @@ import {
   useContext,
   useReducer,
 } from "react";
+import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
 
@@ -982,6 +983,8 @@ function Modal({ children, onClose, title, width = 480 }) {
           overflowY: "auto",
           margin: "16px 0", // ← add this
           boxShadow: "var(--shadow-lg)",
+          position: "sticky",
+          top: "1px",
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -1124,6 +1127,10 @@ function Toast({ message, onClose }) {
     const t = setTimeout(onClose, 3000);
     return () => clearTimeout(t);
   }, []);
+
+  // console.log(message);
+
+  // if (!message) return null; // ← add this line
   return (
     <div
       className="animate-fade txt-sm"
@@ -1188,6 +1195,7 @@ function appReducer(state, action) {
     case "LOGOUT":
       localStorage.removeItem("ww_token");
       localStorage.removeItem("ww_role");
+      localStorage.removeItem("ww_user");
       return {
         ...state,
         currentUser: null,
@@ -1340,6 +1348,7 @@ const INITIAL_STATE = {
 
 function ParentLogin() {
   const { dispatch, state } = useApp();
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [pass, setPass] = useState("");
   const [isReg, setIsReg] = useState(false);
@@ -1519,33 +1528,6 @@ function ParentLogin() {
                 Register here
               </button>
             </p>
-            <div
-              style={{ borderTop: "1px dashed var(--border)", paddingTop: 12 }}
-            >
-              <p
-                style={{
-                  fontSize: 11,
-                  color: "var(--text3)",
-                  textAlign: "center",
-                  marginBottom: 8,
-                }}
-              >
-                Admin?{" "}
-                <button
-                  onClick={() => dispatch({ type: "SET_VIEW", view: "admin" })}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    color: "var(--sky-dark-bg)",
-                    fontWeight: 700,
-                    fontSize: 11,
-                    cursor: "pointer",
-                  }}
-                >
-                  Go to Admin Login →
-                </button>
-              </p>
-            </div>
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -3317,6 +3299,7 @@ function ParentOrders() {
 // ─── PARENT SHELL ─────────────────────────────────────────────
 function ParentShell() {
   const { state, dispatch } = useApp();
+  const navigate = useNavigate();
   const { parentPage, cart } = state;
   const windowWidth = useWindowWidth();
   const isDesktop = windowWidth >= 1024; // laptop/desktop breakpoint
@@ -3385,6 +3368,7 @@ function ParentShell() {
         <button
           onClick={() => {
             dispatch({ type: "LOGOUT" });
+            navigate("/parent");
           }}
           style={{
             background: "none",
@@ -3485,6 +3469,7 @@ function ParentShell() {
 
 function AdminDashboard() {
   const { state, dispatch } = useApp();
+  const navigate = useNavigate();
   const { orders, products } = state;
   const [stats, setStats] = useState(null);
 
@@ -3728,10 +3713,10 @@ function AdminProducts() {
     category: "Tops",
     sellingPrice: "",
     costPrice: "",
-    sizes: ["T1", "T2", "T3", "T4", "T5"],
+    sizes: ["T1", "T2", "T3", "T4", "T5", "T6"],
     isActive: true,
   });
-  const sizes = ["T1", "T2", "T3", "T4", "T5"];
+  const sizes = ["T1", "T2", "T3", "T4", "T5", "T6"];
   const categories = ["All", "Top", "Bottom", "Others"];
 
   function openNew() {
@@ -3768,7 +3753,7 @@ function AdminProducts() {
 
   async function handleSave() {
     if (saving) return;
-    setSaving(true);
+    // Validate FIRST before setting saving state
     if (!form.name || !form.sellingPrice || !form.costPrice) {
       dispatch({
         type: "SET_TOAST",
@@ -3776,6 +3761,8 @@ function AdminProducts() {
       });
       return;
     }
+
+    setSaving(true); // ← only set after validation passes
     dispatch({ type: "SET_TOAST", message: "Saving…" });
     try {
       const body = {
@@ -5250,7 +5237,9 @@ function AdminOrders() {
                   <tr
                     key={o.id}
                     style={{ cursor: "pointer", transition: "background .15s" }}
-                    onClick={() => setDetail(o)}
+                    onClick={() => {
+                      setDetail(o);
+                    }}
                   >
                     <td
                       style={{
@@ -6836,6 +6825,7 @@ function AdminShell() {
   const isSuperAdmin = adminRole === "SUPER_ADMIN";
   const isManager = adminRole === "MANAGER";
   const canManage = isSuperAdmin || isManager;
+  const navigate = useNavigate();
 
   // All nav items with the minimum role required — null = any admin
   const ALL_NAV = [
@@ -6898,7 +6888,12 @@ function AdminShell() {
 
   return (
     <div
-      style={{ display: "flex", minHeight: "100vh", background: "var(--bg2)" }}
+      style={{
+        display: "flex",
+        height: "100vh",
+        overflow: "hidden",
+        background: "var(--bg2)",
+      }}
     >
       {/* Sidebar */}
       <div
@@ -7033,7 +7028,10 @@ function AdminShell() {
           }}
         >
           <button
-            onClick={() => dispatch({ type: "LOGOUT" })}
+            onClick={() => {
+              dispatch({ type: "LOGOUT" });
+              navigate("/admin");
+            }}
             style={{
               width: "100%",
               display: "flex",
@@ -7113,7 +7111,15 @@ function AdminShell() {
         </div>
 
         {/* Page Content */}
-        <div style={{ flex: 1, padding: 20, overflowY: "auto", minHeight: 0 }}>
+        <div
+          style={{
+            flex: 1,
+            padding: 20,
+            overflowY: "auto",
+            minHeight: 0,
+            position: "relative",
+          }}
+        >
           {adminPage === "dashboard" && <AdminDashboard />}
           {adminPage === "parents" && <AdminParents />}
           {adminPage === "products" && <AdminProducts />}
@@ -7396,12 +7402,169 @@ function AdminParents() {
   );
 }
 
+function AdminLoginPage() {
+  const { state, dispatch } = useApp();
+  const navigate = useNavigate();
+  const [adminLoginLoading, setAdminLoginLoading] = useState(false);
+
+  async function handleAdminLogin(e) {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const email = fd.get("email")?.trim();
+    const password = fd.get("password");
+    if (!email || !password) {
+      dispatch({
+        type: "SET_TOAST",
+        message: "Please enter email and password",
+      });
+      return;
+    }
+    setAdminLoginLoading(true);
+    try {
+      const data = await api("/api/auth/admin/login", {
+        method: "POST",
+        body: { email, password },
+      });
+      localStorage.setItem("ww_token", data.token);
+      localStorage.setItem("ww_role", "admin");
+      dispatch({ type: "LOGIN", user: data.admin, role: "admin" });
+      navigate("/admin", { replace: true });
+    } catch (err) {
+      dispatch({
+        type: "SET_TOAST",
+        message: err.message || "Admin login failed",
+      });
+    } finally {
+      setAdminLoginLoading(false);
+    }
+  }
+
+  return (
+    <div
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background:
+          "linear-gradient(160deg,#d6ede5 0%,#f5f3ef 60%,#fdf8ec 100%)",
+      }}
+    >
+      <div
+        style={{
+          background: "var(--bg)",
+          borderRadius: "var(--radius)",
+          boxShadow: "var(--shadow-lg)",
+          padding: 32,
+          width: "100%",
+          maxWidth: 380,
+        }}
+      >
+        <div style={{ textAlign: "center", marginBottom: 24 }}>
+          <div
+            style={{
+              width: 60,
+              height: 60,
+              // borderRadius: "50%",
+              // background: "var(--sky-dark-bg)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 28,
+              margin: "0 auto 12px",
+              overflow: "hidden",
+            }}
+          >
+            {state.settings.logoUrl ? (
+              <img
+                src={state.settings.logoUrl}
+                alt="Logo"
+                style={{ width: "100%", height: "100%", objectFit: "contain" }}
+              />
+            ) : (
+              state.settings.logoEmoji
+            )}
+          </div>
+          <h1
+            style={{
+              fontFamily: "var(--font-display)",
+              fontWeight: 700,
+              fontSize: 20,
+              color: "var(--sky-dark-bg)",
+              fontStyle: "italic",
+            }}
+          >
+            Admin Portal
+          </h1>
+          <p style={{ fontSize: 12, color: "var(--text3)", marginTop: 4 }}>
+            Wonderworld Admin Dashboard
+          </p>
+        </div>
+        <form
+          onSubmit={handleAdminLogin}
+          style={{ display: "flex", flexDirection: "column", gap: 12 }}
+        >
+          <input
+            name="email"
+            type="email"
+            placeholder="admin@school.com"
+            style={{
+              width: "100%",
+              padding: "9px 12px",
+              border: "1px solid var(--border)",
+              borderRadius: "var(--radius-sm)",
+              fontSize: 13,
+              background: "var(--bg)",
+              color: "var(--text)",
+              outline: "none",
+              marginBottom: 4,
+            }}
+          />
+          <input
+            name="password"
+            type="password"
+            placeholder="Password"
+            style={{
+              width: "100%",
+              padding: "9px 12px",
+              border: "1px solid var(--border)",
+              borderRadius: "var(--radius-sm)",
+              fontSize: 13,
+              background: "var(--bg)",
+              color: "var(--text)",
+              outline: "none",
+            }}
+          />
+          <button
+            type="submit"
+            disabled={adminLoginLoading}
+            style={{
+              padding: "11px",
+              background: "var(--sky-dark-bg)",
+              color: "#fff",
+              border: "none",
+              borderRadius: "var(--radius-sm)",
+              fontSize: 14,
+              fontWeight: 800,
+              cursor: adminLoginLoading ? "not-allowed" : "pointer",
+              fontFamily: "var(--font-body)",
+              opacity: adminLoginLoading ? 0.7 : 1,
+            }}
+          >
+            {adminLoginLoading ? "Logging in…" : "Log In to Admin"}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 // ══════════════════════════════════════════════════════════════
 //  ROOT APP
 // ══════════════════════════════════════════════════════════════
 export default function App() {
   const [state, dispatch] = useReducer(appReducer, INITIAL_STATE);
-
+  const navigate = useNavigate();
   // Inject global CSS once
   useEffect(() => {
     const id = "ww-global-styles";
@@ -7419,13 +7582,10 @@ export default function App() {
     const token = localStorage.getItem("ww_token");
     const role = localStorage.getItem("ww_role");
     if (!token || !role) return;
-    // Validate the token is still good by hitting a protected endpoint
     const endpoint =
       role === "admin" ? "/api/admin/settings" : "/api/orders/mine";
     api(endpoint)
       .then(() => {
-        // Token still valid — restore the session with a minimal user object.
-        // The real user details are loaded per-page (dashboard, etc.).
         const storedUser = (() => {
           try {
             return JSON.parse(localStorage.getItem("ww_user") || "null");
@@ -7433,10 +7593,12 @@ export default function App() {
             return null;
           }
         })();
-        if (storedUser) dispatch({ type: "LOGIN", user: storedUser, role });
+        if (storedUser) {
+          dispatch({ type: "LOGIN", user: storedUser, role });
+          navigate(`/${role}`, { replace: true });
+        }
       })
       .catch(() => {
-        // Token expired — clear storage
         localStorage.removeItem("ww_token");
         localStorage.removeItem("ww_role");
         localStorage.removeItem("ww_user");
@@ -7487,7 +7649,7 @@ export default function App() {
       });
       localStorage.setItem("ww_token", data.token);
       localStorage.setItem("ww_role", "admin");
-      dispatch({ type: "LOGIN", user: data.admin, role: "admin" });
+      navigate("/admin");
       dispatch({ type: "SET_VIEW", view: "admin", adminPage: "dashboard" });
     } catch (err) {
       dispatch({
@@ -7498,246 +7660,287 @@ export default function App() {
       setAdminLoginLoading(false);
     }
   }
+  function RootRedirect() {
+    const { state } = useApp();
+    const navigate = useNavigate();
+
+    useEffect(() => {
+      if (state.userRole === "admin") navigate("/admin", { replace: true });
+      else if (state.userRole === "parent")
+        navigate("/parent", { replace: true });
+      else navigate("/parent", { replace: true }); // default to parent login
+    }, [state.userRole]);
+
+    return null;
+  }
 
   return (
     <AppCtx.Provider value={{ state, dispatch }}>
-      <div style={{ fontFamily: "var(--font-body)" }}>
-        {/* Admin direct login */}
-        {showAdminDirect && (
-          <div
-            style={{
-              minHeight: "100vh",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              background:
-                "linear-gradient(160deg,#d6ede5 0%,#f5f3ef 60%,#fdf8ec 100%)",
-              padding: 16,
-            }}
-          >
-            <div
-              className="animate-pop"
-              style={{
-                background: "var(--bg)",
-                borderRadius: "var(--radius)",
-                padding: 32,
-                width: "100%",
-                maxWidth: 360,
-                boxShadow: "var(--shadow-lg)",
-              }}
-            >
-              <div style={{ textAlign: "center", marginBottom: 24 }}>
-                <div
-                  style={{
-                    width: 60,
-                    height: 60,
-                    //borderRadius: "95%",
-                    // background: "var(--ww-bg)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: 28,
-                    margin: "0 auto 12px",
-                    overflow: "hidden",
-                  }}
-                >
-                  {/* {state.settings.logoEmoji} */}
-                  {state.settings.logoUrl ? (
-                    <img
-                      src={state.settings.logoUrl}
-                      alt="Logo"
-                      style={{
-                        width: "100%",
-                        height: "100%",
-                        objectFit: "contain",
-                      }}
-                    />
-                  ) : (
-                    state.settings.logoEmoji
-                  )}
-                </div>
-                <h1
-                  style={{
-                    fontFamily: "var(--font-display)",
-                    fontWeight: 700,
-                    fontSize: 20,
-                    color: "var(--sky-dark-bg)",
-                  }}
-                >
-                  Admin Portal
-                </h1>
-                <p
-                  style={{ fontSize: 12, color: "var(--text3)", marginTop: 4 }}
-                >
-                  Wonderworld Admin Dashboard
-                </p>
-              </div>
-              <form
-                onSubmit={handleAdminLogin}
-                style={{ display: "flex", flexDirection: "column", gap: 12 }}
-              >
-                <input
-                  name="email"
-                  type="email"
-                  placeholder="admin@school.com"
-                  style={{
-                    width: "100%",
-                    padding: "9px 12px",
-                    border: "1px solid var(--border)",
-                    borderRadius: "var(--radius-sm)",
-                    fontSize: 13,
-                    background: "var(--bg)",
-                    color: "var(--text)",
-                    outline: "none",
-                    marginBottom: 4,
-                  }}
-                />
-                <input
-                  name="password"
-                  type="password"
-                  placeholder="Password"
-                  style={{
-                    width: "100%",
-                    padding: "9px 12px",
-                    border: "1px solid var(--border)",
-                    borderRadius: "var(--radius-sm)",
-                    fontSize: 13,
-                    background: "var(--bg)",
-                    color: "var(--text)",
-                    outline: "none",
-                  }}
-                />
-                <button
-                  type="submit"
-                  style={{
-                    padding: "11px",
-                    background: "var(--sky-dark-bg)",
-                    color: "#fff",
-                    border: "none",
-                    borderRadius: "var(--radius-sm)",
-                    fontSize: 14,
-                    fontWeight: 800,
-                    cursor: "pointer",
-                    fontFamily: "var(--font-body)",
-                  }}
-                >
-                  {adminLoginLoading ? "Logging in…" : "Log In to Admin"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    dispatch({
-                      type: "SET_VIEW",
-                      view: "parent",
-                      parentPage: "login",
-                    })
-                  }
-                  style={{
-                    background: "none",
-                    border: "none",
-                    color: "var(--text3)",
-                    fontSize: 12,
-                    cursor: "pointer",
-                    fontFamily: "var(--font-body)",
-                  }}
-                >
-                  ← Parent Portal
-                </button>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {/* Main app */}
-        {!showAdminDirect && (
-          <>
-            {/* View switcher (demo only) */}
-            {!state.currentUser && (
-              <div
-                style={{
-                  position: "fixed",
-                  top: 12,
-                  right: 12,
-                  zIndex: 500,
-                  display: "flex",
-                  gap: 6,
-                }}
-              >
-                <button
-                  onClick={() =>
-                    dispatch({
-                      type: "SET_VIEW",
-                      view: "parent",
-                      parentPage: "login",
-                    })
-                  }
-                  style={{
-                    padding: "5px 12px",
-                    borderRadius: 30,
-                    fontSize: 11,
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    border: "1.5px solid",
-                    borderColor:
-                      state.view === "parent"
-                        ? "var(--sky-dark-bg)"
-                        : "var(--border)",
-                    background:
-                      state.view === "parent"
-                        ? "var(--sky-dark-bg)"
-                        : "rgba(255,255,255,.9)",
-                    color: state.view === "parent" ? "#fff" : "var(--text2)",
-                  }}
-                >
-                  Parent
-                </button>
-                <button
-                  onClick={() =>
-                    dispatch({
-                      type: "SET_VIEW",
-                      view: "admin",
-                      adminPage: "dashboard",
-                    })
-                  }
-                  style={{
-                    padding: "5px 12px",
-                    borderRadius: 30,
-                    fontSize: 11,
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    border: "1.5px solid",
-                    borderColor:
-                      state.view === "admin"
-                        ? "var(--sky-dark-bg)"
-                        : "var(--border)",
-                    background:
-                      state.view === "admin"
-                        ? "var(--sky-dark-bg)"
-                        : "rgba(255,255,255,.9)",
-                    color: state.view === "admin" ? "#fff" : "var(--text2)",
-                  }}
-                >
-                  Admin
-                </button>
-              </div>
-            )}
-            {(state.userRole === "parent" ||
-              (state.view === "parent" && !state.currentUser)) && (
-              <ParentShell />
-            )}
-            {(state.userRole === "admin" ||
-              (state.view === "admin" && state.currentUser)) && <AdminShell />}
-          </>
-        )}
-
-        {/* Toast Notification */}
-        {state.toast && (
-          <Toast
-            message={state.toast}
-            onClose={() => dispatch({ type: "CLEAR_TOAST" })}
-          />
-        )}
-      </div>
+      <style>{GLOBAL_CSS}</style>
+      {/* Toast Notification */}
+      {state.toast && (
+        <Toast
+          message={state.toast}
+          onClose={() => dispatch({ type: "CLEAR_TOAST" })}
+        />
+      )}
+      <Routes>
+        <Route
+          path="/parent/*"
+          element={
+            state.userRole === "parent" ? <ParentShell /> : <ParentLogin />
+          }
+        />
+        <Route
+          path="/admin/*"
+          element={
+            state.userRole === "admin" ? <AdminShell /> : <AdminLoginPage />
+          }
+        />
+        <Route path="*" element={<RootRedirect />} />
+      </Routes>
     </AppCtx.Provider>
   );
+
+  // return (
+  //   <AppCtx.Provider value={{ state, dispatch }}>
+  //     <div style={{ fontFamily: "var(--font-body)" }}>
+  //       {/* Admin direct login */}
+  //       {showAdminDirect && (
+  //         <div
+  //           style={{
+  //             minHeight: "100vh",
+  //             display: "flex",
+  //             alignItems: "center",
+  //             justifyContent: "center",
+  //             background:
+  //               "linear-gradient(160deg,#d6ede5 0%,#f5f3ef 60%,#fdf8ec 100%)",
+  //             padding: 16,
+  //           }}
+  //         >
+  //           <div
+  //             className="animate-pop"
+  //             style={{
+  //               background: "var(--bg)",
+  //               borderRadius: "var(--radius)",
+  //               padding: 32,
+  //               width: "100%",
+  //               maxWidth: 360,
+  //               boxShadow: "var(--shadow-lg)",
+  //             }}
+  //           >
+  //             <div style={{ textAlign: "center", marginBottom: 24 }}>
+  //               <div
+  //                 style={{
+  //                   width: 60,
+  //                   height: 60,
+  //                   //borderRadius: "95%",
+  //                   // background: "var(--ww-bg)",
+  //                   display: "flex",
+  //                   alignItems: "center",
+  //                   justifyContent: "center",
+  //                   fontSize: 28,
+  //                   margin: "0 auto 12px",
+  //                   overflow: "hidden",
+  //                 }}
+  //               >
+  //                 {/* {state.settings.logoEmoji} */}
+  //                 {state.settings.logoUrl ? (
+  //                   <img
+  //                     src={state.settings.logoUrl}
+  //                     alt="Logo"
+  //                     style={{
+  //                       width: "100%",
+  //                       height: "100%",
+  //                       objectFit: "contain",
+  //                     }}
+  //                   />
+  //                 ) : (
+  //                   state.settings.logoEmoji
+  //                 )}
+  //               </div>
+  //               <h1
+  //                 style={{
+  //                   fontFamily: "var(--font-display)",
+  //                   fontWeight: 700,
+  //                   fontSize: 20,
+  //                   color: "var(--sky-dark-bg)",
+  //                 }}
+  //               >
+  //                 Admin Portal
+  //               </h1>
+  //               <p
+  //                 style={{ fontSize: 12, color: "var(--text3)", marginTop: 4 }}
+  //               >
+  //                 Wonderworld Admin Dashboard
+  //               </p>
+  //             </div>
+  //             <form
+  //               onSubmit={handleAdminLogin}
+  //               style={{ display: "flex", flexDirection: "column", gap: 12 }}
+  //             >
+  //               <input
+  //                 name="email"
+  //                 type="email"
+  //                 placeholder="admin@school.com"
+  //                 style={{
+  //                   width: "100%",
+  //                   padding: "9px 12px",
+  //                   border: "1px solid var(--border)",
+  //                   borderRadius: "var(--radius-sm)",
+  //                   fontSize: 13,
+  //                   background: "var(--bg)",
+  //                   color: "var(--text)",
+  //                   outline: "none",
+  //                   marginBottom: 4,
+  //                 }}
+  //               />
+  //               <input
+  //                 name="password"
+  //                 type="password"
+  //                 placeholder="Password"
+  //                 style={{
+  //                   width: "100%",
+  //                   padding: "9px 12px",
+  //                   border: "1px solid var(--border)",
+  //                   borderRadius: "var(--radius-sm)",
+  //                   fontSize: 13,
+  //                   background: "var(--bg)",
+  //                   color: "var(--text)",
+  //                   outline: "none",
+  //                 }}
+  //               />
+  //               <button
+  //                 type="submit"
+  //                 style={{
+  //                   padding: "11px",
+  //                   background: "var(--sky-dark-bg)",
+  //                   color: "#fff",
+  //                   border: "none",
+  //                   borderRadius: "var(--radius-sm)",
+  //                   fontSize: 14,
+  //                   fontWeight: 800,
+  //                   cursor: "pointer",
+  //                   fontFamily: "var(--font-body)",
+  //                 }}
+  //               >
+  //                 {adminLoginLoading ? "Logging in…" : "Log In to Admin"}
+  //               </button>
+  //               <button
+  //                 type="button"
+  //                 onClick={() =>
+  //                   dispatch({
+  //                     type: "SET_VIEW",
+  //                     view: "parent",
+  //                     parentPage: "login",
+  //                   })
+  //                 }
+  //                 style={{
+  //                   background: "none",
+  //                   border: "none",
+  //                   color: "var(--text3)",
+  //                   fontSize: 12,
+  //                   cursor: "pointer",
+  //                   fontFamily: "var(--font-body)",
+  //                 }}
+  //               >
+  //                 ← Parent Portal
+  //               </button>
+  //             </form>
+  //           </div>
+  //         </div>
+  //       )}
+
+  //       {/* Main app */}
+  //       {!showAdminDirect && (
+  //         <>
+  //           {/* View switcher (demo only) */}
+  //           {!state.currentUser && (
+  //             <div
+  //               style={{
+  //                 position: "fixed",
+  //                 top: 12,
+  //                 right: 12,
+  //                 zIndex: 500,
+  //                 display: "flex",
+  //                 gap: 6,
+  //               }}
+  //             >
+  //               <button
+  //                 onClick={() =>
+  //                   dispatch({
+  //                     type: "SET_VIEW",
+  //                     view: "parent",
+  //                     parentPage: "login",
+  //                   })
+  //                 }
+  //                 style={{
+  //                   padding: "5px 12px",
+  //                   borderRadius: 30,
+  //                   fontSize: 11,
+  //                   fontWeight: 700,
+  //                   cursor: "pointer",
+  //                   border: "1.5px solid",
+  //                   borderColor:
+  //                     state.view === "parent"
+  //                       ? "var(--sky-dark-bg)"
+  //                       : "var(--border)",
+  //                   background:
+  //                     state.view === "parent"
+  //                       ? "var(--sky-dark-bg)"
+  //                       : "rgba(255,255,255,.9)",
+  //                   color: state.view === "parent" ? "#fff" : "var(--text2)",
+  //                 }}
+  //               >
+  //                 Parent
+  //               </button>
+  //               <button
+  //                 onClick={() =>
+  //                   dispatch({
+  //                     type: "SET_VIEW",
+  //                     view: "admin",
+  //                     adminPage: "dashboard",
+  //                   })
+  //                 }
+  //                 style={{
+  //                   padding: "5px 12px",
+  //                   borderRadius: 30,
+  //                   fontSize: 11,
+  //                   fontWeight: 700,
+  //                   cursor: "pointer",
+  //                   border: "1.5px solid",
+  //                   borderColor:
+  //                     state.view === "admin"
+  //                       ? "var(--sky-dark-bg)"
+  //                       : "var(--border)",
+  //                   background:
+  //                     state.view === "admin"
+  //                       ? "var(--sky-dark-bg)"
+  //                       : "rgba(255,255,255,.9)",
+  //                   color: state.view === "admin" ? "#fff" : "var(--text2)",
+  //                 }}
+  //               >
+  //                 Admin
+  //               </button>
+  //             </div>
+  //           )}
+  //           {(state.userRole === "parent" ||
+  //             (state.view === "parent" && !state.currentUser)) && (
+  //             <ParentShell />
+  //           )}
+  //           {(state.userRole === "admin" ||
+  //             (state.view === "admin" && state.currentUser)) && <AdminShell />}
+  //         </>
+  //       )}
+
+  //       {/* Toast Notification */}
+  //       {state.toast && (
+  //         <Toast
+  //           message={state.toast}
+  //           onClose={() => dispatch({ type: "CLEAR_TOAST" })}
+  //         />
+  //       )}
+  //     </div>
+  //   </AppCtx.Provider>
+  // );
 }
