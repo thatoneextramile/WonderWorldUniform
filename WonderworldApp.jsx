@@ -7491,7 +7491,6 @@ function AdminLoginPage() {
               fontWeight: 700,
               fontSize: 20,
               color: "var(--sky-dark-bg)",
-              fontStyle: "italic",
             }}
           >
             Admin Portal
