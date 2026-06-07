@@ -1128,8 +1128,6 @@ function Toast({ message, onClose }) {
     return () => clearTimeout(t);
   }, []);
 
-  // console.log(message);
-
   // if (!message) return null; // ← add this line
   return (
     <div
@@ -1358,6 +1356,7 @@ function ParentLogin() {
     email: "",
     phone: "",
     password: "",
+    confirmPassword: "",
   });
   const [loginLoading, setLoginLoading] = useState(false);
 
@@ -1378,7 +1377,11 @@ function ParentLogin() {
       localStorage.setItem("ww_token", data.token);
       localStorage.setItem("ww_role", "parent");
       dispatch({ type: "LOGIN", user: data.parent, role: "parent" });
-      dispatch({ type: "SET_PARENT_PAGE", page: "home" });
+      if (data.mustChangePassword) {
+        dispatch({ type: "SET_PARENT_PAGE", page: "changePassword" });
+      } else {
+        navigate("/parent");
+      }
     } catch (err) {
       dispatch({
         type: "SET_TOAST",
@@ -1394,6 +1397,9 @@ function ParentLogin() {
         type: "SET_TOAST",
         message: "Please fill in all required fields",
       });
+      return;
+    } else if (form.password !== form.confirmPassword) {
+      dispatch({ type: "SET_TOAST", message: "Passwords do not match" });
       return;
     }
     setLoginLoading(true);
@@ -1508,6 +1514,27 @@ function ParentLogin() {
             </Btn>
             <p
               style={{
+                fontSize: 11,
+                color: "var(--text3)",
+                textAlign: "center",
+                marginTop: 10,
+              }}
+            >
+              Forgot your password? Contact us at{" "}
+              <a
+                className="txt-base"
+                href="mailto:info@wonderworldmontessori.ca"
+                style={{
+                  color: "var(--sky-dark)",
+                  fontWeight: 600,
+                  textDecoration: "none",
+                }}
+              >
+                info@wonderworldmontessori.ca
+              </a>
+            </p>
+            <p
+              style={{
                 textAlign: "center",
                 fontSize: 12,
                 color: "var(--text3)",
@@ -1570,6 +1597,13 @@ function ParentLogin() {
               onChange={(v) => setForm({ ...form, password: v })}
               type="password"
               placeholder="Create a password"
+              required
+            />
+            <Input
+              label="Re-enter Password"
+              value={form.confirmPassword}
+              onChange={(v) => setForm({ ...form, confirmPassword: v })}
+              type="password"
               required
             />
             <Btn
@@ -3296,6 +3330,114 @@ function ParentOrders() {
   );
 }
 
+function ChangePasswordPage() {
+  const { dispatch } = useApp();
+  const navigate = useNavigate();
+  const [form, setForm] = useState({ newPassword: "", confirmPassword: "" });
+  const [saving, setSaving] = useState(false);
+
+  async function handleSubmit() {
+    if (form.newPassword.length < 6) {
+      dispatch({
+        type: "SET_TOAST",
+        message: "Password must be at least 6 characters",
+      });
+      return;
+    }
+    if (form.newPassword !== form.confirmPassword) {
+      dispatch({ type: "SET_TOAST", message: "Passwords do not match" });
+      return;
+    }
+    setSaving(true);
+    try {
+      await api("/api/auth/parent/change-password", {
+        method: "PUT",
+        body: { newPassword: form.newPassword },
+      });
+      dispatch({
+        type: "SET_TOAST",
+        message: "Password updated! Please log in again.",
+      });
+      dispatch({ type: "LOGOUT" });
+      navigate("/parent");
+    } catch (err) {
+      dispatch({
+        type: "SET_TOAST",
+        message: err.message || "Failed to update password",
+      });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "var(--bg2)",
+        padding: 20,
+      }}
+    >
+      <div
+        style={{
+          background: "var(--bg)",
+          borderRadius: "var(--radius)",
+          boxShadow: "var(--shadow-lg)",
+          padding: 32,
+          width: "100%",
+          maxWidth: 380,
+        }}
+      >
+        <div style={{ textAlign: "center", marginBottom: 24 }}>
+          <div style={{ fontSize: 32, marginBottom: 8 }}>🔑</div>
+          <h2
+            style={{
+              fontFamily: "var(--font-display)",
+              fontWeight: 700,
+              fontSize: 20,
+              color: "var(--sky-dark)",
+            }}
+          >
+            Set New Password
+          </h2>
+          <p style={{ fontSize: 13, color: "var(--text3)", marginTop: 6 }}>
+            A temporary password was set for your account. Please create a new
+            password to continue.
+          </p>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <Input
+            label="New Password"
+            type="password"
+            value={form.newPassword}
+            onChange={(v) => setForm({ ...form, newPassword: v })}
+            required
+          />
+          <Input
+            label="Confirm New Password"
+            type="password"
+            value={form.confirmPassword}
+            onChange={(v) => setForm({ ...form, confirmPassword: v })}
+            required
+          />
+          <Btn
+            variant="admin"
+            onClick={handleSubmit}
+            disabled={saving}
+            fullWidth
+            style={{ marginTop: 4 }}
+          >
+            {saving ? "Saving…" : "Set New Password"}
+          </Btn>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── PARENT SHELL ─────────────────────────────────────────────
 function ParentShell() {
   const { state, dispatch } = useApp();
@@ -3402,6 +3544,7 @@ function ParentShell() {
         {parentPage === "home" && <ParentHome />}
         {parentPage === "cart" && <ParentCart />}
         {parentPage === "orders" && <ParentOrders />}
+        {parentPage === "changePassword" && <ChangePasswordPage />}
       </div>
       {/* Bottom Nav */}
       <div
@@ -3695,6 +3838,9 @@ function AdminProducts() {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
   const [loadingProducts, setLoadingProducts] = useState(true);
+  const [confirmAction, setConfirmAction] = useState(null); // { message, onConfirm, confirmLabel, confirmVariant }
+
+  const isSuperAdmin = state.currentUser?.role === "SUPER_ADMIN";
 
   // Load admin product list (includes costPrice) on mount
   useEffect(() => {
@@ -3883,8 +4029,7 @@ function AdminProducts() {
               {[
                 "Product",
                 "Selling",
-                "Cost 🔒",
-                "Profit",
+                ...(isSuperAdmin ? ["Cost 🔒", "Profit"] : []),
                 "Sizes",
                 "Status",
                 "",
@@ -3970,26 +4115,31 @@ function AdminProducts() {
                 >
                   ${p.sellingPrice}
                 </td>
-                <td
-                  style={{
-                    padding: "10px 10px",
-                    borderBottom: "0.5px solid var(--border)",
-                    fontWeight: 700,
-                    color: "var(--peach-dark)",
-                  }}
-                >
-                  ${p.costPrice}
-                </td>
-                <td
-                  style={{
-                    padding: "10px 10px",
-                    borderBottom: "0.5px solid var(--border)",
-                    fontWeight: 700,
-                    color: "#1a5c47",
-                  }}
-                >
-                  ${(p.sellingPrice - p.costPrice).toFixed(2)}
-                </td>
+                {isSuperAdmin && (
+                  <td
+                    style={{
+                      padding: "10px 10px",
+                      borderBottom: "0.5px solid var(--border)",
+                      fontWeight: 700,
+                      color: "var(--peach-dark)",
+                    }}
+                  >
+                    ${p.costPrice}
+                  </td>
+                )}
+                {isSuperAdmin && (
+                  <td
+                    style={{
+                      padding: "10px 10px",
+                      borderBottom: "0.5px solid var(--border)",
+                      fontWeight: 700,
+                      color: "#1a5c47",
+                    }}
+                  >
+                    ${(p.sellingPrice - p.costPrice).toFixed(2)}
+                  </td>
+                )}
+
                 <td
                   style={{
                     padding: "10px 10px",
@@ -4064,23 +4214,31 @@ function AdminProducts() {
                       Edit
                     </button>
                     <button
-                      onClick={async () => {
-                        try {
-                          await api(`/api/admin/products/${p.id}`, {
-                            method: "DELETE",
-                          });
-                          dispatch({ type: "DELETE_PRODUCT", id: p.id });
-                          dispatch({
-                            type: "SET_TOAST",
-                            message: "Product deleted",
-                          });
-                        } catch (err) {
-                          dispatch({
-                            type: "SET_TOAST",
-                            message: err.message || "Failed to delete product",
-                          });
-                        }
-                      }}
+                      onClick={() =>
+                        setConfirmAction({
+                          message: `Delete "${p.name}"? This cannot be undone.`,
+                          confirmLabel: "Delete",
+                          confirmVariant: "peach",
+                          onConfirm: async () => {
+                            try {
+                              await api(`/api/admin/products/${p.id}`, {
+                                method: "DELETE",
+                              });
+                              dispatch({ type: "DELETE_PRODUCT", id: p.id });
+                              dispatch({
+                                type: "SET_TOAST",
+                                message: "Product deleted",
+                              });
+                            } catch (err) {
+                              dispatch({
+                                type: "SET_TOAST",
+                                message:
+                                  err.message || "Failed to delete product",
+                              });
+                            }
+                          },
+                        })
+                      }
                       style={{
                         padding: "4px 10px",
                         borderRadius: 5,
@@ -4257,6 +4415,18 @@ function AdminProducts() {
           </div>
         </Modal>
       )}
+      {confirmAction && (
+        <ConfirmModal
+          message={confirmAction.message}
+          confirmLabel={confirmAction.confirmLabel}
+          confirmVariant={confirmAction.confirmVariant}
+          onConfirm={() => {
+            confirmAction.onConfirm();
+            setConfirmAction(null);
+          }}
+          onCancel={() => setConfirmAction(null)}
+        />
+      )}
     </div>
   );
 }
@@ -4319,7 +4489,6 @@ function AdminInventory() {
 
   function startEdit(r) {
     // Re-read from apiRows to get the freshest value
-    console.log("startEdit", r.total, r.sold, r);
     const fresh = apiRows?.find((row) => row.id === r.invId);
     const total = fresh ? fresh.totalQty : r.total;
     setEditingRow({ invId: r.invId, field: "total", value: String(total) });
@@ -5891,7 +6060,14 @@ function AdminMasterControl() {
                   </button>
                 )}
                 <button
-                  onClick={() => deleteLoc(l.id)}
+                  onClick={() =>
+                    setConfirmAction({
+                      message: `Remove location "${l.name}"?`,
+                      confirmLabel: "Remove",
+                      confirmVariant: "peach",
+                      onConfirm: () => deleteLoc(l.id),
+                    })
+                  }
                   style={{
                     padding: "3px 9px",
                     border: "none",
@@ -6551,7 +6727,6 @@ function AdminAdmins() {
       });
     }
   }
-
   async function handleDelete(a) {
     if (
       !window.confirm(`Permanently delete "${a.name}"? This cannot be undone.`)
@@ -6809,6 +6984,88 @@ function AccessDenied() {
       </div>
       <div style={{ fontSize: 13 }}>
         Your account role does not have permission to view this page.
+      </div>
+    </div>
+  );
+}
+
+function ConfirmModal({
+  message,
+  onConfirm,
+  onCancel,
+  confirmLabel = "Confirm",
+  confirmVariant = "peach",
+}) {
+  const colors = {
+    peach: { bg: "var(--peach)", color: "var(--peach-dark)" },
+    sky: { bg: "var(--sky)", color: "var(--sky-dark)" },
+  };
+  const c = colors[confirmVariant] || colors.peach;
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(0,0,0,.45)",
+        zIndex: 9999,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 16,
+      }}
+    >
+      <div
+        style={{
+          background: "var(--bg)",
+          borderRadius: "var(--radius)",
+          padding: 28,
+          maxWidth: 380,
+          width: "100%",
+          boxShadow: "var(--shadow-lg)",
+        }}
+      >
+        <p
+          style={{
+            fontSize: 14,
+            color: "var(--text)",
+            marginBottom: 20,
+            lineHeight: 1.6,
+          }}
+        >
+          {message}
+        </p>
+        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+          <button
+            onClick={onCancel}
+            style={{
+              padding: "8px 16px",
+              border: "1px solid var(--border)",
+              borderRadius: "var(--radius-sm)",
+              background: "var(--bg)",
+              color: "var(--text2)",
+              fontWeight: 600,
+              fontSize: 13,
+              cursor: "pointer",
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            style={{
+              padding: "8px 16px",
+              border: "none",
+              borderRadius: "var(--radius-sm)",
+              background: c.bg,
+              color: c.color,
+              fontWeight: 700,
+              fontSize: 13,
+              cursor: "pointer",
+            }}
+          >
+            {confirmLabel}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -7136,13 +7393,16 @@ function AdminShell() {
 }
 
 function AdminParents() {
-  const { dispatch } = useApp();
+  const { state, dispatch } = useApp();
   const [parents, setParents] = useState([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [editParent, setEditParent] = useState(null); // parent being edited
   const [editForm, setEditForm] = useState({}); // { firstName, lastName, phone }
   const [editSaving, setEditSaving] = useState(false);
+  const [confirmAction, setConfirmAction] = useState(null);
+
+  const isSuperAdmin = state.currentUser?.role === "SUPER_ADMIN";
 
   useEffect(() => {
     setLoading(true);
@@ -7175,6 +7435,22 @@ function AdminParents() {
       dispatch({
         type: "SET_TOAST",
         message: err.message || "Failed to update account",
+      });
+    }
+  }
+
+  async function handleDeleteParent(p) {
+    try {
+      await api(`/api/admin/parents/${p.id}`, { method: "DELETE" });
+      setParents(parents.filter((x) => x.id !== p.id));
+      dispatch({
+        type: "SET_TOAST",
+        message: `${p.firstName} ${p.lastName} deleted`,
+      });
+    } catch (err) {
+      dispatch({
+        type: "SET_TOAST",
+        message: err.message || "Failed to delete parent",
       });
     }
   }
@@ -7341,6 +7617,29 @@ function AdminParents() {
                     >
                       {p.isActive ? "Deactivate" : "Activate"}
                     </button>
+                    {isSuperAdmin && (
+                      <button
+                        onClick={() =>
+                          setConfirmAction({
+                            message: `Permanently delete ${p.firstName} ${p.lastName}? This will also delete all their associated orders and cannot be undone.`,
+                            confirmLabel: "Delete",
+                            confirmVariant: "peach",
+                            onConfirm: () => handleDeleteParent(p),
+                          })
+                        }
+                        style={{
+                          padding: "4px 10px",
+                          border: "none",
+                          borderRadius: 5,
+                          fontWeight: 700,
+                          cursor: "pointer",
+                          background: "var(--peach)",
+                          color: "var(--peach-dark)",
+                        }}
+                      >
+                        Delete
+                      </button>
+                    )}
                   </div>
                 </td>
               </tr>
@@ -7372,6 +7671,27 @@ function AdminParents() {
               onChange={(v) => setEditForm({ ...editForm, phone: v })}
               type="tel"
             />
+            <Input
+              label="Set Temporary Password (leave blank to keep current)"
+              type="password"
+              value={editForm.password || ""}
+              onChange={(v) => setEditForm({ ...editForm, password: v })}
+            />
+            {editForm.password && (
+              <p
+                style={{
+                  fontSize: 11,
+                  color: "var(--lemon-dark)",
+                  background: "var(--lemon)",
+                  padding: "6px 10px",
+                  borderRadius: "var(--radius-xs)",
+                  marginTop: -4,
+                }}
+              >
+                ⚠ Parent will be prompted to change their password on next
+                login.
+              </p>
+            )}
             {/* <Input
               label="Email"
               value={editForm.email}
@@ -7397,6 +7717,18 @@ function AdminParents() {
             </div>
           </div>
         </Modal>
+      )}
+      {confirmAction && (
+        <ConfirmModal
+          message={confirmAction.message}
+          confirmLabel={confirmAction.confirmLabel}
+          confirmVariant={confirmAction.confirmVariant}
+          onConfirm={() => {
+            confirmAction.onConfirm();
+            setConfirmAction(null);
+          }}
+          onCancel={() => setConfirmAction(null)}
+        />
       )}
     </div>
   );
