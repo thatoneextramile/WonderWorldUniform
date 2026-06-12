@@ -198,6 +198,34 @@ import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
 
+const POLICY_NOTICE = (
+  <div
+    style={{
+      background: "var(--lemon)",
+      border: "1px solid var(--lemon-mid)",
+      borderRadius: "var(--radius-sm)",
+      padding: "12px 14px",
+      fontSize: 12,
+      color: "var(--lemon-dark)",
+      lineHeight: 1.6,
+      marginTop: 12,
+    }}
+  >
+    <div style={{ fontWeight: 700, marginBottom: 4 }}>
+      📋 Return & Exchange Policy
+    </div>
+    <p style={{ margin: "0 0 6px 0" }}>
+      All uniform orders are final — we are unable to issue refunds once an
+      order has been placed and paid. Size exchanges may be available depending
+      on current stock availability.
+    </p>
+    <p style={{ margin: 0 }}>
+      <strong>Pick-Up:</strong> You will receive an email when your uniform
+      order is ready for pick-up at the school front desk.
+    </p>
+  </div>
+);
+
 // ─── API HELPERS ──────────────────────────────────────────────
 // Reads JWT from localStorage and attaches it to every request.
 async function api(path, { method = "GET", body } = {}) {
@@ -1403,13 +1431,26 @@ function ParentLogin() {
         message: "Please fill in all required fields",
       });
       return;
-    } else if (form.password !== form.confirmPassword) {
+    }
+    if (form.password !== form.confirmPassword) {
       dispatch({ type: "SET_TOAST", message: "Passwords do not match" });
       return;
-    } else if (form.children.some((c) => !c.name.trim())) {
+    }
+    if (!form.children || form.children.length === 0) {
+      dispatch({ type: "SET_TOAST", message: "Please add at least one child" });
+      return;
+    }
+    if (form.children.some((c) => !c.name?.trim())) {
       dispatch({
         type: "SET_TOAST",
         message: "Please enter a name for each child",
+      });
+      return;
+    }
+    if (form.children.some((c) => !c.class?.trim())) {
+      dispatch({
+        type: "SET_TOAST",
+        message: "Please enter a class for each child",
       });
       return;
     }
@@ -1649,7 +1690,7 @@ function ParentLogin() {
                     }}
                   />
                   <input
-                    placeholder="Class (optional)"
+                    placeholder="Class *"
                     value={child.class}
                     onChange={(e) => {
                       const updated = [...form.children];
@@ -2219,15 +2260,18 @@ function ImageUploader({ images = [], onChange, onNewFiles }) {
 
 function ParentHome() {
   const { state, dispatch } = useApp();
-  const [cat, setCat] = useState("All");
+  const [cat, setCat] = useState("All Items");
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [addSize, setAddSize] = useState("");
   const { cart } = state;
   const [addQty, setAddQty] = useState(1);
   const [stockMap, setStockMap] = useState({}); // { "productId-size": availableQty }
   const cats = [
-    "All",
-    ...(state.settings.categories || ["Top", "Bottom", "Others"]),
+    "Tops",
+    "Bottoms",
+    "Event Essentials",
+    "Outdoor Wear",
+    "All Items",
   ];
   const windowWidth = useWindowWidth();
   const isDesktop = windowWidth >= 1024;
@@ -2241,7 +2285,7 @@ function ParentHome() {
   // Show a loading message until at least one product arrives.
   const productsLoaded = state.products.length > 0;
   const filtered = state.products.filter(
-    (p) => p.isActive && (cat === "All" || p.category === cat),
+    (p) => p.isActive && (cat === "All Items" || p.category === cat),
   );
   const orderStockThreshold = state.settings.orderStockThreshold ?? 0;
 
@@ -2653,8 +2697,6 @@ function ParentCart({ cartForm, setCartForm }) {
   const visibleFields = formFields.filter((f) => f.isVisible);
   const hasStockWarning = Object.keys(stockWarnings).length > 0;
 
-  console.log(form);
-
   useEffect(() => {
     api("/api/admin/inventory/available")
       .then((data) => setStockMap(data))
@@ -2758,17 +2800,20 @@ function ParentCart({ cartForm, setCartForm }) {
         >
           Order Submitted!
         </h2>
-        <p style={{ color: "var(--text2)", fontSize: 14, marginBottom: 24 }}>
+        <p style={{ color: "var(--text2)", fontSize: 14, marginBottom: 16 }}>
           Your order has been received. We'll update you when it's ready.
         </p>
-        <Btn
-          onClick={() => {
-            setSubmitted(false);
-            dispatch({ type: "SET_PARENT_PAGE", page: "orders" });
-          }}
-        >
-          View My Orders
-        </Btn>
+        {POLICY_NOTICE}
+        <div style={{ marginTop: 20 }}>
+          <Btn
+            onClick={() => {
+              setSubmitted(false);
+              dispatch({ type: "SET_PARENT_PAGE", page: "orders" });
+            }}
+          >
+            View My Orders
+          </Btn>
+        </div>
       </div>
     );
 
@@ -3138,7 +3183,9 @@ function ParentCart({ cartForm, setCartForm }) {
         >
           {visibleFields
             .filter((f) =>
-              ["childName", "parentName", "parentPhone"].includes(f.fieldKey),
+              ["childName", "childClass", "parentName", "parentPhone"].includes(
+                f.fieldKey,
+              ),
             )
             .map((f) => {
               // Special handling for childName field
@@ -3212,6 +3259,7 @@ function ParentCart({ cartForm, setCartForm }) {
                   );
                 }
               }
+
               if (f.fieldKey === "parentName") {
                 return (
                   <div key={f.fieldKey}>
@@ -3233,8 +3281,42 @@ function ParentCart({ cartForm, setCartForm }) {
                 );
               }
               // Skip childClass if children list is used (class auto-populated from child selection)
-              if (f.fieldKey === "childClass" && state.children.length > 0) {
-                return null;
+              if (f.fieldKey === "childClass") {
+                // If a registered child is selected, show class as read-only
+                const selectedChild = state.children.find(
+                  (c) => c.name === form.childName?.trim(),
+                );
+                if (selectedChild) {
+                  return (
+                    <div key={f.fieldKey}>
+                      <label className="txt-label">{f.label}</label>
+                      <div
+                        style={{
+                          padding: "9px 12px",
+                          border: "1px solid var(--border)",
+                          borderRadius: "var(--radius-sm)",
+                          background: "var(--bg2)",
+                          fontSize: 13,
+                          color: "var(--text2)",
+                          marginBottom: 8,
+                        }}
+                      >
+                        {selectedChild.class || "—"}
+                      </div>
+                    </div>
+                  );
+                }
+                // No registered child selected — show editable input
+                return (
+                  <Input
+                    key={f.fieldKey}
+                    label={f.label}
+                    value={form.childClass || ""}
+                    onChange={(v) => setForm({ ...form, childClass: v })}
+                    required={f.isRequired}
+                    placeholder={`Enter ${f.label.toLowerCase()}`}
+                  />
+                );
               }
               if (f.fieldKey === "parentPhone") {
                 return (
@@ -3301,6 +3383,7 @@ function ParentCart({ cartForm, setCartForm }) {
               style={{ marginBottom: 10 }}
             />
           ))}
+        {POLICY_NOTICE}
         <Btn
           onClick={handleSubmit}
           fullWidth
@@ -3694,6 +3777,10 @@ function ParentMyChildren() {
       dispatch({ type: "SET_TOAST", message: "Child name is required" });
       return;
     }
+    if (!newChild.class.trim()) {
+      dispatch({ type: "SET_TOAST", message: "Class is required" });
+      return;
+    }
     setSaving(true);
     try {
       const child = await api("/api/parents/children", {
@@ -3719,6 +3806,10 @@ function ParentMyChildren() {
   async function handleUpdate() {
     if (!editForm.name.trim()) {
       dispatch({ type: "SET_TOAST", message: "Child name is required" });
+      return;
+    }
+    if (!editForm.class?.trim()) {
+      dispatch({ type: "SET_TOAST", message: "Class is required" });
       return;
     }
     setEditSaving(true);
@@ -3783,9 +3874,10 @@ function ParentMyChildren() {
                   required
                 />
                 <Input
-                  label="Class (optional)"
+                  label="Class"
                   value={editForm.class}
                   onChange={(v) => setEditForm({ ...editForm, class: v })}
+                  required
                   style={{ marginTop: 8 }}
                 />
                 <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
@@ -3883,9 +3975,10 @@ function ParentMyChildren() {
             required
           />
           <Input
-            label="Class (optional)"
+            label="Class"
             value={newChild.class}
             onChange={(v) => setNewChild({ ...newChild, class: v })}
+            required
             style={{ marginTop: 8 }}
           />
           <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
@@ -4360,7 +4453,7 @@ function AdminProducts() {
     isActive: true,
   });
   const sizes = ["T1", "T2", "T3", "T4", "T5", "T6"];
-  const categories = ["All", "Top", "Bottom", "Others"];
+  const categories = ["Tops", "Bottoms", "Event Essentials", "Outdoor Wear"];
 
   function openNew() {
     setEditing(null);
@@ -7195,6 +7288,10 @@ function AdminAdmins() {
   async function handleUpdate() {
     if (!form.name) {
       dispatch({ type: "SET_TOAST", message: "Name is required" });
+      return;
+    }
+    if (!editForm.class?.trim()) {
+      dispatch({ type: "SET_TOAST", message: "Class is required" });
       return;
     }
     try {
