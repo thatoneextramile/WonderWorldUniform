@@ -2367,157 +2367,126 @@ function ParentHome() {
 
   return (
     <div className="animate-fade">
-      {/* Hero */}
-      <div
-        style={{
-          background:
-            "linear-gradient(150deg,#c8e6d8 0%,#d6ede5 40%,#fdf8ec 100%)",
-          borderRadius: "var(--radius)",
-          padding: "20px 22px",
-          marginBottom: 16,
-          border: "1px solid rgba(61,184,130,.25)",
-        }}
-      >
-        <h1
-          style={{
-            fontFamily: "var(--font-display)",
-            fontWeight: 700,
-            fontSize: 20,
-            color: "var(--text)",
-            marginBottom: 4,
-          }}
-        >
-          {state.settings.welcomeTitle}
-        </h1>
-        <p
-          style={{
-            fontSize: 13,
-            color: "var(--text)",
-            lineHeight: 1.5,
-          }}
-        >
-          {state.settings.welcomeText}
-        </p>
-        {state.settings.noticeText && (
-          <div
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-              background: "var(--sky-dark-bg)",
-              color: "#fff",
-              padding: "5px 14px",
-              borderRadius: 30,
-              fontSize: 11,
-              fontWeight: 700,
-              marginTop: 10,
-            }}
-          >
-            🎉 {state.settings.noticeText}
-          </div>
-        )}
+      {/* ── Announcement banner ─────────────────────── */}
+      {state.settings.noticeText && (
+        <div style={{
+          background: "var(--sky-dark-bg)", color: "#fff",
+          textAlign: "center", padding: "9px 16px",
+          fontSize: 12, fontWeight: 700, letterSpacing: ".02em",
+          borderRadius: "var(--radius-sm)", marginBottom: 20,
+        }}>
+          🎉 {state.settings.noticeText}
+        </div>
+      )}
+
+      {/* ── Page title + filter bar ──────────────────── */}
+      <div style={{
+        display: "flex",
+        alignItems: isDesktop ? "center" : "flex-start",
+        flexDirection: isDesktop ? "row" : "column",
+        justifyContent: "space-between",
+        gap: 12,
+        marginBottom: 20,
+      }}>
+        <div>
+          <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: isDesktop ? 28 : 22, color: "var(--text)", margin: 0 }}>
+            {state.settings.welcomeTitle || "Uniforms"}
+          </h1>
+          <p style={{ fontSize: 12, color: "var(--text3)", marginTop: 4 }}>
+            {filtered.length} item{filtered.length !== 1 ? "s" : ""}
+          </p>
+        </div>
+
+        {/* Category filter pills */}
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          {cats.map((c) => (
+            <button
+              key={c}
+              onClick={() => setCat(c)}
+              style={{
+                padding: "7px 16px",
+                borderRadius: 30,
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: "pointer",
+                border: "1.5px solid",
+                borderColor: cat === c ? "var(--sky-dark-bg)" : "var(--border)",
+                background: cat === c ? "var(--sky-dark-bg)" : "#fff",
+                color: cat === c ? "#fff" : "var(--text2)",
+                transition: "all .15s",
+              }}
+            >
+              {c}
+            </button>
+          ))}
+        </div>
       </div>
-      {/* Categories */}
-      <div
-        style={{ display: "flex", gap: 6, marginBottom: 14, flexWrap: "wrap" }}
-      >
-        {cats.map((c) => (
-          <button
-            key={c}
-            onClick={() => setCat(c)}
-            style={{
-              padding: "6px 14px",
-              borderRadius: 30,
-              fontSize: 12,
-              fontWeight: 700,
-              cursor: "pointer",
-              border: "1.5px solid",
-              borderColor: cat === c ? "var(--sky-dark-bg)" : "var(--border)",
-              background: cat === c ? "var(--sky-dark-bg)" : "var(--bg)",
-              color: cat === c ? "#fff" : "var(--text2)",
-              transition: "all .15s",
-            }}
-          >
-            {c}
-          </button>
-        ))}
-      </div>
-      {/* Grid */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: isDesktop ? "repeat(4, 1fr)" : "1fr 1fr",
-          gap: 12,
-        }}
-      >
+
+      {/* Divider */}
+      <div style={{ height: 1, background: "var(--border)", marginBottom: 24 }} />
+
+      {/* ── Product grid — CEFA 4-col style ─────────── */}
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: isDesktop ? "repeat(4, 1fr)" : "repeat(2, 1fr)",
+        gap: isDesktop ? 24 : 12,
+      }}>
         {filtered.map((p) => (
           <div
             key={p.id}
-            onClick={() => {
-              setSelectedProduct(p);
-              setAddSize("");
-              setAddQty(1);
-            }}
+            onClick={() => { setSelectedProduct(p); setAddSize(""); setAddQty(1); }}
             style={{
-              background: "var(--bg)",
+              background: "#fff",
               border: "1px solid var(--border)",
-              borderRadius: "var(--radius)",
+              borderRadius: 8,
               overflow: "hidden",
               cursor: "pointer",
-              transition: "all .2s",
-              boxShadow: "var(--shadow)",
+              transition: "box-shadow .2s, transform .2s",
+              boxShadow: "0 1px 4px rgba(0,0,0,.06)",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.boxShadow = "0 6px 20px rgba(0,0,0,.12)";
+              e.currentTarget.style.transform = "translateY(-2px)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.boxShadow = "0 1px 4px rgba(0,0,0,.06)";
+              e.currentTarget.style.transform = "translateY(0)";
             }}
           >
-            <div
-              style={{
-                height: 100,
-                overflow: "hidden",
-                borderRadius: "var(--radius-sm) var(--radius-sm) 0 0",
-                flexShrink: 0,
-              }}
-            >
+            {/* Tall 3:4 rectangular image — CEFA style */}
+            <div style={{
+              aspectRatio: "3 / 4",
+              overflow: "hidden",
+              background: "var(--bg2)",
+            }}>
               <ProductImageGallery
                 images={p.images}
                 imageEmoji={p.imageEmoji}
                 imageBg={p.imageBg}
-                height={100}
+                height="100%"
                 showThumbs={false}
               />
             </div>
-            <div style={{ padding: "10px 12px" }}>
-              <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 2 }}>
+
+            {/* Product info */}
+            <div style={{ padding: "12px 14px 16px" }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", marginBottom: 4, lineHeight: 1.3 }}>
                 {p.name}
               </div>
-              <div
-                style={{
-                  fontSize: 14,
-                  color: "var(--sky-dark)",
-                  fontWeight: 800,
-                }}
-              >
+              <div style={{ fontSize: 16, fontWeight: 800, color: "var(--text)" }}>
                 ${p.sellingPrice.toFixed(2)}
               </div>
-              <div
-                style={{
-                  display: "flex",
-                  gap: 3,
-                  flexWrap: "wrap",
-                  marginTop: 6,
-                }}
-              >
-                {sortSizes(selectedProduct?.sizes).map((s) => (
-                  <span
-                    key={s}
-                    style={{
-                      background: "var(--bg2)",
-                      border: "0.5px solid var(--border)",
-                      borderRadius: 4,
-                      fontSize: 9,
-                      fontWeight: 700,
-                      padding: "2px 5px",
-                      color: "var(--text3)",
-                    }}
-                  >
+              <div style={{ display: "flex", gap: 3, flexWrap: "wrap", marginTop: 8 }}>
+                {sortSizes(p.sizes).map((s) => (
+                  <span key={s} style={{
+                    background: "var(--bg2)",
+                    border: "0.5px solid var(--border)",
+                    borderRadius: 3,
+                    fontSize: 9,
+                    fontWeight: 700,
+                    padding: "2px 5px",
+                    color: "var(--text3)",
+                  }}>
                     {s}
                   </span>
                 ))}
@@ -2526,6 +2495,7 @@ function ParentHome() {
           </div>
         ))}
       </div>
+
       {filtered.length === 0 && (
         <EmptyState emoji="👕" message="No products in this category" />
       )}
@@ -4046,152 +4016,120 @@ function ParentShell() {
   if (parentPage === "login") return <ParentLogin />;
 
   return (
-    <div
-      style={{
-        maxWidth: isDesktop ? "100%" : 540,
-        margin: "0 auto",
-        width: "100%",
-      }}
-    >
-      {/* Header */}
-      <div
-        style={{
-          background: "var(--bg)",
-          borderBottom: "1px solid var(--border)",
-          padding: "12px 16px",
+    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg2)" }}>
+
+      {/* ── Sticky top header ────────────────────────────── */}
+      <header style={{
+        background: "#fff",
+        borderBottom: "1px solid var(--border)",
+        position: "sticky",
+        top: 0,
+        zIndex: 200,
+        boxShadow: "0 1px 4px rgba(0,0,0,.05)",
+      }}>
+        <div style={{
+          maxWidth: 1280,
+          margin: "0 auto",
+          padding: isDesktop ? "0 40px" : "0 16px",
+          height: 60,
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          position: "sticky",
-          top: 0,
-          zIndex: 100,
-          flexShrink: 0,
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          {state.settings.logoUrl ? (
-            <img
-              src={state.settings.logoUrl}
-              alt="Logo"
+          gap: 12,
+        }}>
+          {/* Logo + name */}
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+            {state.settings.logoUrl ? (
+              <img src={state.settings.logoUrl} alt="Logo"
+                style={{ width: 32, height: 32, objectFit: "contain", borderRadius: 6 }} />
+            ) : (
+              <span style={{ fontSize: 22 }}>{state.settings.logoEmoji}</span>
+            )}
+            {isDesktop && (
+              <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 16, color: "var(--sky-dark-bg)", whiteSpace: "nowrap" }}>
+                {state.settings.systemName}
+              </span>
+            )}
+          </div>
+
+          {/* Nav tabs — top right */}
+          <nav style={{ display: "flex", alignItems: "center", gap: isDesktop ? 2 : 0, flex: 1, justifyContent: "flex-end" }}>
+            {tabs.map((t) => (
+              <button
+                key={t.id}
+                onClick={() => dispatch({ type: "SET_PARENT_PAGE", page: t.id })}
+                style={{
+                  display: "flex",
+                  flexDirection: isDesktop ? "row" : "column",
+                  alignItems: "center",
+                  gap: isDesktop ? 5 : 2,
+                  padding: isDesktop ? "8px 12px" : "6px 8px",
+                  background: parentPage === t.id ? "var(--sky)" : "none",
+                  border: "none",
+                  borderRadius: "var(--radius-sm)",
+                  cursor: "pointer",
+                  fontFamily: "var(--font-body)",
+                  fontWeight: 600,
+                  fontSize: isDesktop ? 13 : 9,
+                  color: parentPage === t.id ? "var(--sky-dark-bg)" : "var(--text2)",
+                  transition: "all .15s",
+                  whiteSpace: "nowrap",
+                  position: "relative",
+                }}
+              >
+                <span style={{ fontSize: isDesktop ? 14 : 18 }}>{t.icon}</span>
+                {t.id === "cart"
+                  ? isDesktop ? `Cart${cartCount > 0 ? ` (${cartCount})` : ""}` : `Cart`
+                  : t.label}
+                {t.id === "cart" && cartCount > 0 && !isDesktop && (
+                  <span style={{
+                    position: "absolute", top: 3, right: 3,
+                    background: "var(--sky-dark-bg)", color: "#fff",
+                    borderRadius: "50%", width: 15, height: 15,
+                    fontSize: 8, fontWeight: 800,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}>{cartCount}</span>
+                )}
+              </button>
+            ))}
+
+            <div style={{ width: 1, height: 24, background: "var(--border)", margin: "0 6px" }} />
+
+            <button
+              onClick={() => { dispatch({ type: "LOGOUT" }); navigate("/parent"); }}
               style={{
-                width: 28,
-                height: 28,
-                objectFit: "contain",
-                borderRadius: 4,
-              }}
-            />
-          ) : (
-            <span style={{ fontSize: 20 }}>{state.settings.logoEmoji}</span>
-          )}
-          <span
-            style={{
-              fontFamily: "var(--font-display)",
-              fontWeight: 700,
-              fontSize: 15,
-              color: "var(--mint-dark)",
-            }}
-          >
-            {state.settings.systemName}
-          </span>
-        </div>
-        <button
-          onClick={() => {
-            dispatch({ type: "LOGOUT" });
-            navigate("/parent");
-          }}
-          style={{
-            background: "none",
-            border: "none",
-            fontSize: 12,
-            color: "var(--text3)",
-            cursor: "pointer",
-            fontFamily: "var(--font-body)",
-          }}
-        >
-          Sign out
-        </button>
-      </div>
-      {/* Content */}
-      {/* <div style={{ flex: 1, padding: 16, overflowY: "auto" }}>
-        {parentPage === "home" && <ParentHome />}
-        {parentPage === "cart" && <ParentCart />}
-        {parentPage === "orders" && <ParentOrders />}
-      </div> */}
-      <div
-        style={{
-          flex: 1,
-          // overflowY: "auto",
-          padding: isDesktop ? "24px 60px" : "0 0 80px 0",
-          maxWidth: isDesktop ? 1200 : "none",
-          margin: isDesktop ? "0 auto" : 0,
-          width: "100%",
-          minHeight: 0,
-        }}
-      >
-        {parentPage === "home" && <ParentHome />}
-        {parentPage === "cart" && (
-          <ParentCart cartForm={cartForm} setCartForm={setCartForm} />
-        )}
-        {parentPage === "orders" && <ParentOrders />}
-        {parentPage === "children" && <ParentMyChildren />}
-        {parentPage === "changePassword" && <ChangePasswordPage />}
-      </div>
-      {/* Bottom Nav */}
-      <div
-        // style={{
-        //   background: "var(--bg)",
-        //   borderTop: "1px solid var(--border)",
-        //   display: "flex",
-        //   position: "sticky",
-        //   bottom: 0,
-        // }}
-        style={{
-          display: "flex",
-          borderTop: isDesktop ? "none" : "1px solid var(--border)",
-          borderBottom: isDesktop ? "1px solid var(--border)" : "none",
-          background: "var(--bg)",
-          position: isDesktop ? "" : "fixed",
-          top: isDesktop ? 0 : "auto",
-          bottom: isDesktop ? "auto" : 0,
-          left: 0,
-          right: 0,
-          zIndex: 100,
-          justifyContent: isDesktop ? "center" : "space-around",
-          gap: isDesktop ? 32 : 0,
-          padding: isDesktop ? "0 40px" : 0,
-        }}
-      >
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => dispatch({ type: "SET_PARENT_PAGE", page: t.id })}
-            style={{
-              flex: 1,
-              padding: "10px 0",
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: 3,
-              borderTop: `2.5px solid ${parentPage === t.id ? "var(--sky-dark)" : "transparent"}`,
-              transition: "all .15s",
-            }}
-          >
-            <span style={{ fontSize: 18 }}>{t.icon}</span>
-            <span
-              style={{
-                fontSize: 10,
-                fontWeight: 700,
-                color: parentPage === t.id ? "var(--sky-dark)" : "var(--text3)",
+                padding: isDesktop ? "7px 12px" : "6px 8px",
+                background: "none",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius-sm)",
+                cursor: "pointer",
+                fontFamily: "var(--font-body)",
+                fontSize: 11,
+                fontWeight: 600,
+                color: "var(--text3)",
+                whiteSpace: "nowrap",
               }}
             >
-              {t.label}
-            </span>
-          </button>
-        ))}
-      </div>
+              {isDesktop ? "Sign out" : "🚪"}
+            </button>
+          </nav>
+        </div>
+      </header>
+
+      {/* ── Page content ─────────────────────────────────── */}
+      <main style={{
+        flex: 1,
+        maxWidth: 1280,
+        margin: "0 auto",
+        width: "100%",
+        padding: isDesktop ? "32px 40px" : "16px 16px 24px",
+      }}>
+        {parentPage === "home"           && <ParentHome />}
+        {parentPage === "cart"           && <ParentCart cartForm={cartForm} setCartForm={setCartForm} />}
+        {parentPage === "orders"         && <ParentOrders />}
+        {parentPage === "children"       && <ParentMyChildren />}
+        {parentPage === "changePassword" && <ChangePasswordPage />}
+      </main>
     </div>
   );
 }
