@@ -1189,7 +1189,10 @@ function appReducer(state, action) {
         currentUser: action.user,
         userRole: action.role,
         parentPage: action.role === "admin" ? state.parentPage : "home",
+        children: action.user?.children || [],
       };
+    case "SET_CHILDREN":
+      return { ...state, children: action.children };
     case "LOGOUT":
       localStorage.removeItem("ww_token");
       localStorage.removeItem("ww_role");
@@ -1338,6 +1341,7 @@ const INITIAL_STATE = {
   formFields: INITIAL_FORM_FIELDS,
   toast: null,
   productDetail: null,
+  children: [],
 };
 
 // ══════════════════════════════════════════════════════════════
@@ -1357,6 +1361,7 @@ function ParentLogin() {
     phone: "",
     password: "",
     confirmPassword: "",
+    children: [{ name: "", class: "" }],
   });
   const [loginLoading, setLoginLoading] = useState(false);
 
@@ -1401,6 +1406,12 @@ function ParentLogin() {
     } else if (form.password !== form.confirmPassword) {
       dispatch({ type: "SET_TOAST", message: "Passwords do not match" });
       return;
+    } else if (form.children.some((c) => !c.name.trim())) {
+      dispatch({
+        type: "SET_TOAST",
+        message: "Please enter a name for each child",
+      });
+      return;
     }
     setLoginLoading(true);
     try {
@@ -1411,6 +1422,9 @@ function ParentLogin() {
       localStorage.setItem("ww_token", data.token);
       localStorage.setItem("ww_role", "parent");
       dispatch({ type: "LOGIN", user: data.parent, role: "parent" });
+      api("/api/parents/children")
+        .then((children) => dispatch({ type: "SET_CHILDREN", children }))
+        .catch(() => {});
       dispatch({ type: "SET_PARENT_PAGE", page: "home" });
     } catch (err) {
       dispatch({
@@ -1606,6 +1620,92 @@ function ParentLogin() {
               type="password"
               required
             />
+            <div>
+              <label className="txt-label">Children</label>
+              {form.children.map((child, i) => (
+                <div
+                  key={i}
+                  style={{
+                    display: "flex",
+                    gap: 6,
+                    marginBottom: 6,
+                    alignItems: "center",
+                  }}
+                >
+                  <input
+                    placeholder="Child's name *"
+                    value={child.name}
+                    onChange={(e) => {
+                      const updated = [...form.children];
+                      updated[i] = { ...updated[i], name: e.target.value };
+                      setForm({ ...form, children: updated });
+                    }}
+                    style={{
+                      flex: 2,
+                      padding: "8px 10px",
+                      border: "1px solid var(--border)",
+                      borderRadius: "var(--radius-sm)",
+                      fontSize: 13,
+                    }}
+                  />
+                  <input
+                    placeholder="Class (optional)"
+                    value={child.class}
+                    onChange={(e) => {
+                      const updated = [...form.children];
+                      updated[i] = { ...updated[i], class: e.target.value };
+                      setForm({ ...form, children: updated });
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: "8px 10px",
+                      border: "1px solid var(--border)",
+                      borderRadius: "var(--radius-sm)",
+                      fontSize: 13,
+                    }}
+                  />
+                  {form.children.length > 1 && (
+                    <button
+                      onClick={() =>
+                        setForm({
+                          ...form,
+                          children: form.children.filter((_, j) => j !== i),
+                        })
+                      }
+                      style={{
+                        background: "none",
+                        border: "none",
+                        color: "var(--peach-dark)",
+                        cursor: "pointer",
+                        fontSize: 16,
+                        fontWeight: 700,
+                      }}
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+              ))}
+              <button
+                onClick={() =>
+                  setForm({
+                    ...form,
+                    children: [...form.children, { name: "", class: "" }],
+                  })
+                }
+                style={{
+                  fontSize: 12,
+                  color: "var(--sky-dark)",
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  fontWeight: 600,
+                  padding: 0,
+                }}
+              >
+                + Add another child
+              </button>
+            </div>
             <Btn
               onClick={handleRegister}
               fullWidth
@@ -2136,6 +2236,7 @@ function ParentHome() {
       .then((data) => setStockMap(data))
       .catch(() => {});
   }, []);
+
   // Products come from initAppData via SET_INITIAL_DATA.
   // Show a loading message until at least one product arrives.
   const productsLoaded = state.products.length > 0;
@@ -2527,18 +2628,12 @@ function ParentHome() {
   );
 }
 
-function ParentCart() {
+function ParentCart({ cartForm, setCartForm }) {
   const { state, dispatch } = useApp();
   const { cart, locations, settings, formFields } = state;
-  const [form, setForm] = useState({
-    childName: "",
-    childClass: "",
-    parentName:
-      state.currentUser?.firstName + " " + state.currentUser?.lastName || "",
-    parentPhone: state.currentUser?.phone || "",
-    locationId: "",
-    notes: "",
-  });
+  const form = cartForm;
+  const setForm = setCartForm;
+
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -2548,15 +2643,17 @@ function ParentCart() {
   const subtotal = cart.reduce((s, i) => s + i.unitPrice * i.quantity, 0);
   const threshold = settings.discountThreshold;
   const childNameFilled = form.childName?.trim().length > 0;
-  const discountRate =
-    subtotal >= threshold && isFirstOrder && childNameFilled
-      ? settings.discountRate || 0.15
-      : 0;
-  const discountAmount = subtotal * discountRate;
+  const discountRate = state.settings.discountRate || 0;
+  const appliedRate =
+    subtotal >= threshold && isFirstOrder && childNameFilled ? discountRate : 0;
+  const discountAmount = subtotal * appliedRate;
   const total = subtotal - discountAmount;
+  const discountPct = Math.round(discountRate * 100); // e.g. 0.15 → 15
 
   const visibleFields = formFields.filter((f) => f.isVisible);
   const hasStockWarning = Object.keys(stockWarnings).length > 0;
+
+  console.log(form);
 
   useEffect(() => {
     api("/api/admin/inventory/available")
@@ -2567,17 +2664,33 @@ function ParentCart() {
   useEffect(() => {
     const name = form.childName?.trim();
     if (!name) {
-      setIsFirstOrder(true); // unknown yet, assume eligible
+      setIsFirstOrder(true);
       return;
     }
-    api(`/api/orders/check-first-order?childName=${encodeURIComponent(name)}`)
+    const child = state.children.find((c) => c.name === name);
+    const params = child
+      ? `childId=${child.id}`
+      : `childName=${encodeURIComponent(name)}`;
+    api(`/api/orders/check-first-order?${params}`)
       .then((data) => setIsFirstOrder(data.isFirstOrder))
       .catch(() => setIsFirstOrder(true));
   }, [form.childName]);
 
+  useEffect(() => {
+    if (state.children.length === 1) {
+      setForm((f) => ({
+        ...f,
+        childName: state.children[0].name,
+        childClass: state.children[0].class || f.childClass,
+      }));
+    }
+  }, [state.children]);
+
   async function handleSubmit() {
     if (submitting) return;
-    const required = visibleFields.filter((f) => f.isRequired);
+    const required = visibleFields.filter(
+      (f) => f.isRequired && f.fieldKey !== "parentName",
+    );
     for (const f of required) {
       if (!form[f.fieldKey]) {
         dispatch({ type: "SET_TOAST", message: `Please fill in: ${f.label}` });
@@ -2589,11 +2702,13 @@ function ParentCart() {
       return;
     }
     setSubmitting(true);
+    const child = state.children.find((c) => c.name === form.childName);
     try {
       const newOrder = await api("/api/orders", {
         method: "POST",
         body: {
           ...form,
+          childId: child?.id || null,
           items: cart.map((i) => ({
             productId: i.productId,
             productName: i.productName,
@@ -2605,6 +2720,14 @@ function ParentCart() {
       });
       dispatch({ type: "ADD_ORDER", order: newOrder });
       dispatch({ type: "CLEAR_CART" });
+      setCartForm({
+        childName: "",
+        childClass: "",
+        parentName: "",
+        parentPhone: "",
+        locationId: "",
+        notes: "",
+      });
       dispatch({ type: "SET_TOAST", message: "Order submitted successfully!" });
       setSubmitted(true);
     } catch (err) {
@@ -2679,21 +2802,28 @@ function ParentCart() {
       if (childNameFilled && isFirstOrder)
         return (
           <span style={{ color: "var(--sky-dark)", fontWeight: 700 }}>
-            🎉 15% first-order discount applied!
+            🎉 {discountPct}% first-order discount applied!
           </span>
         );
-      else
+      else if (state.children.length > 1 && !childNameFilled)
         return (
           <span style={{ color: "var(--lemon-dark)", fontWeight: 600 }}>
-            💡 Enter your child's name below to apply the 15% first-order
-            discount
+            💡 Select a child in the Delivery Details section below to check if
+            you qualify for the ${discountPct}% first-order discount
           </span>
         );
-    } else
+    } else if (state.children.length > 1 && !childNameFilled)
       return (
         <span>
-          💡 Add ${(threshold - subtotal).toFixed(2)} more to unlock 15% off{" "}
-          first order!
+          💡 Select a child and add $${(threshold - subtotal).toFixed(2)} more
+          to unlock a potential ${discountPct}% first-order discount
+        </span>
+      );
+    else if (childNameFilled && isFirstOrder)
+      return (
+        <span>
+          💡 Add $${(threshold - subtotal).toFixed(2)} more to unlock a
+          potential ${discountPct}% first-order discount
         </span>
       );
   };
@@ -2938,7 +3068,7 @@ function ParentCart() {
                       marginLeft: 4,
                     }}
                   >
-                    15% OFF — Order ≥ ${threshold}
+                    {discountPct}% — First Order ≥ ${threshold}
                   </span>
                 </span>
                 <span style={{ color: "var(--peach-dark)", fontWeight: 700 }}>
@@ -2947,7 +3077,7 @@ function ParentCart() {
               </div>
             </>
           )}
-          {subtotal > 0 && subtotal < threshold && (
+          {subtotal > 0 && (
             <div
               style={{
                 fontSize: 11,
@@ -3008,20 +3138,129 @@ function ParentCart() {
         >
           {visibleFields
             .filter((f) =>
-              ["childName", "childClass", "parentName", "parentPhone"].includes(
-                f.fieldKey,
-              ),
+              ["childName", "parentName", "parentPhone"].includes(f.fieldKey),
             )
-            .map((f) => (
-              <Input
-                key={f.fieldKey}
-                label={f.label}
-                value={form[f.fieldKey] || ""}
-                onChange={(v) => setForm({ ...form, [f.fieldKey]: v })}
-                required={f.isRequired}
-                placeholder={`Enter ${f.label.toLowerCase()}`}
-              />
-            ))}
+            .map((f) => {
+              // Special handling for childName field
+              if (f.fieldKey === "childName") {
+                if (state.children.length === 1) {
+                  // Single child — show read-only display
+                  return (
+                    <div key={f.fieldKey}>
+                      <label className="txt-label">{f.label}</label>
+                      <div
+                        style={{
+                          padding: "9px 12px",
+                          border: "1px solid var(--border)",
+                          borderRadius: "var(--radius-sm)",
+                          background: "var(--bg2)",
+                          fontSize: 13,
+                          color: "var(--text2)",
+                          marginBottom: 8,
+                        }}
+                      >
+                        {state.children[0].name}
+                        {state.children[0].class &&
+                          ` — ${state.children[0].class}`}
+                      </div>
+                    </div>
+                  );
+                }
+                if (state.children.length > 1) {
+                  // Multiple children — show dropdown
+                  return (
+                    <div key={f.fieldKey}>
+                      <label className="txt-label">
+                        {f.label}
+                        {f.isRequired && (
+                          <span style={{ color: "var(--peach-dark)" }}> *</span>
+                        )}
+                      </label>
+                      <select
+                        value={form.childName}
+                        onChange={(e) => {
+                          const child = state.children.find(
+                            (c) => c.name === e.target.value,
+                          );
+                          setForm({
+                            ...form,
+                            childName: e.target.value,
+                            childClass: child?.class || form.childClass,
+                          });
+                        }}
+                        style={{
+                          width: "100%",
+                          padding: "9px 12px",
+                          border: "1px solid var(--border)",
+                          borderRadius: "var(--radius-sm)",
+                          fontSize: 13,
+                          background: "var(--bg)",
+                          color: "var(--text)",
+                          outline: "none",
+                          marginBottom: 8,
+                        }}
+                      >
+                        <option value="">— Select child —</option>
+                        {state.children.map((c) => (
+                          <option key={c.id} value={c.name}>
+                            {c.name}
+                            {c.class ? ` (${c.class})` : ""}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  );
+                }
+              }
+              if (f.fieldKey === "parentName") {
+                return (
+                  <div key={f.fieldKey}>
+                    <label className="txt-label">{f.label}</label>
+                    <div
+                      style={{
+                        padding: "9px 12px",
+                        border: "1px solid var(--border)",
+                        borderRadius: "var(--radius-sm)",
+                        background: "var(--bg2)",
+                        fontSize: 13,
+                        color: "var(--text2)",
+                        marginBottom: 8,
+                      }}
+                    >
+                      {form.parentName}
+                    </div>
+                  </div>
+                );
+              }
+              // Skip childClass if children list is used (class auto-populated from child selection)
+              if (f.fieldKey === "childClass" && state.children.length > 0) {
+                return null;
+              }
+              if (f.fieldKey === "parentPhone") {
+                return (
+                  <Input
+                    key={f.fieldKey}
+                    label={f.label}
+                    value={form.parentPhone || ""}
+                    onChange={(v) => setForm({ ...form, parentPhone: v })}
+                    required={f.isRequired}
+                    placeholder="Enter phone number"
+                    type="tel"
+                  />
+                );
+              }
+              // Default — render normal input
+              return (
+                <Input
+                  key={f.fieldKey}
+                  label={f.label}
+                  value={form[f.fieldKey] || ""}
+                  onChange={(v) => setForm({ ...form, [f.fieldKey]: v })}
+                  required={f.isRequired}
+                  placeholder={`Enter ${f.label.toLowerCase()}`}
+                />
+              );
+            })}
         </div>
         {visibleFields
           .filter((f) => f.fieldKey === "locationId")
@@ -3184,7 +3423,7 @@ function ParentOrders() {
                     fontWeight: 700,
                   }}
                 >
-                  15% discount applied
+                  {Math.round(o.discountRate * 100)}% discount applied
                 </span>
               )}
             </div>
@@ -3439,6 +3678,238 @@ function ChangePasswordPage() {
 }
 
 // ─── PARENT SHELL ─────────────────────────────────────────────
+function ParentMyChildren() {
+  const { state, dispatch } = useApp();
+  const [children, setChildren] = useState(state.children || []);
+  const [newChild, setNewChild] = useState({ name: "", class: "" });
+  const [adding, setAdding] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const [editingChild, setEditingChild] = useState(null); // { id, name, class }
+  const [editForm, setEditForm] = useState({ name: "", class: "" });
+  const [editSaving, setEditSaving] = useState(false);
+
+  async function handleAdd() {
+    if (!newChild.name.trim()) {
+      dispatch({ type: "SET_TOAST", message: "Child name is required" });
+      return;
+    }
+    setSaving(true);
+    try {
+      const child = await api("/api/parents/children", {
+        method: "POST",
+        body: { name: newChild.name.trim(), class: newChild.class.trim() },
+      });
+      const updated = [...children, child];
+      setChildren(updated);
+      dispatch({ type: "SET_CHILDREN", children: updated });
+      setNewChild({ name: "", class: "" });
+      setAdding(false);
+      dispatch({ type: "SET_TOAST", message: "Child added!" });
+    } catch (err) {
+      dispatch({
+        type: "SET_TOAST",
+        message: err.message || "Failed to add child",
+      });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleUpdate() {
+    if (!editForm.name.trim()) {
+      dispatch({ type: "SET_TOAST", message: "Child name is required" });
+      return;
+    }
+    setEditSaving(true);
+    try {
+      const updated = await api(`/api/parents/children/${editingChild.id}`, {
+        method: "PUT",
+        body: { name: editForm.name.trim(), class: editForm.class.trim() },
+      });
+      const updatedList = children.map((c) =>
+        c.id === updated.id ? updated : c,
+      );
+      setChildren(updatedList);
+      dispatch({ type: "SET_CHILDREN", children: updatedList });
+      setEditingChild(null);
+      dispatch({ type: "SET_TOAST", message: "Child updated!" });
+    } catch (err) {
+      dispatch({
+        type: "SET_TOAST",
+        message: err.message || "Failed to update child",
+      });
+    } finally {
+      setEditSaving(false);
+    }
+  }
+
+  return (
+    <div className="animate-fade" style={{ padding: 16 }}>
+      <h2
+        style={{
+          fontFamily: "var(--font-display)",
+          fontWeight: 700,
+          fontSize: 18,
+          marginBottom: 16,
+        }}
+      >
+        My Children
+      </h2>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 8,
+          marginBottom: 16,
+        }}
+      >
+        {children.map((c) => (
+          <div key={c.id}>
+            {editingChild?.id === c.id ? (
+              // Inline edit form
+              <div
+                style={{
+                  background: "var(--bg2)",
+                  borderRadius: "var(--radius-sm)",
+                  padding: 14,
+                  border: "1px solid var(--border)",
+                }}
+              >
+                <Input
+                  label="Child Name"
+                  value={editForm.name}
+                  onChange={(v) => setEditForm({ ...editForm, name: v })}
+                  required
+                />
+                <Input
+                  label="Class (optional)"
+                  value={editForm.class}
+                  onChange={(v) => setEditForm({ ...editForm, class: v })}
+                  style={{ marginTop: 8 }}
+                />
+                <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                  <Btn
+                    variant="admin"
+                    onClick={handleUpdate}
+                    disabled={editSaving}
+                    style={{ flex: 1 }}
+                  >
+                    {editSaving ? "Saving…" : "Save"}
+                  </Btn>
+                  <Btn variant="ghost" onClick={() => setEditingChild(null)}>
+                    Cancel
+                  </Btn>
+                </div>
+              </div>
+            ) : (
+              // Normal display
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: "12px 14px",
+                  background: "var(--bg)",
+                  borderRadius: "var(--radius-sm)",
+                  border: "1px solid var(--border)",
+                }}
+              >
+                <div
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: "50%",
+                    background: "var(--sky)",
+                    color: "var(--sky-dark)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontWeight: 800,
+                    fontSize: 16,
+                    flexShrink: 0,
+                  }}
+                >
+                  {c.name.charAt(0).toUpperCase()}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 700 }}>{c.name}</div>
+                  {c.class && (
+                    <div style={{ fontSize: 12, color: "var(--text3)" }}>
+                      {c.class}
+                    </div>
+                  )}
+                </div>
+                <button
+                  onClick={() => {
+                    setEditingChild(c);
+                    setEditForm({ name: c.name, class: c.class || "" });
+                  }}
+                  style={{
+                    padding: "4px 10px",
+                    border: "1px solid var(--border)",
+                    borderRadius: 5,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    background: "var(--bg2)",
+                    color: "var(--text2)",
+                  }}
+                >
+                  Edit
+                </button>
+              </div>
+            )}
+          </div>
+        ))}
+        {children.length === 0 && (
+          <p style={{ color: "var(--text3)", fontSize: 13 }}>
+            No children added yet.
+          </p>
+        )}
+      </div>
+      {adding ? (
+        <div
+          style={{
+            background: "var(--bg2)",
+            borderRadius: "var(--radius-sm)",
+            padding: 14,
+          }}
+        >
+          <Input
+            label="Child Name"
+            value={newChild.name}
+            onChange={(v) => setNewChild({ ...newChild, name: v })}
+            required
+          />
+          <Input
+            label="Class (optional)"
+            value={newChild.class}
+            onChange={(v) => setNewChild({ ...newChild, class: v })}
+            style={{ marginTop: 8 }}
+          />
+          <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+            <Btn
+              variant="admin"
+              onClick={handleAdd}
+              disabled={saving}
+              style={{ flex: 1 }}
+            >
+              {saving ? "Saving…" : "Add Child"}
+            </Btn>
+            <Btn variant="ghost" onClick={() => setAdding(false)}>
+              Cancel
+            </Btn>
+          </div>
+        </div>
+      ) : (
+        <Btn variant="admin" onClick={() => setAdding(true)} fullWidth>
+          + Add Child
+        </Btn>
+      )}
+    </div>
+  );
+}
 function ParentShell() {
   const { state, dispatch } = useApp();
   const navigate = useNavigate();
@@ -3454,7 +3925,30 @@ function ParentShell() {
       icon: "🛒",
     },
     { id: "orders", label: "My Orders", icon: "📋" },
+    { id: "children", label: "My Children", icon: "👧" },
   ];
+  const [cartForm, setCartForm] = useState({
+    childName: "",
+    childClass: "",
+    parentName: state.currentUser
+      ? `${state.currentUser.firstName} ${state.currentUser.lastName}`
+      : "",
+    parentPhone: state.currentUser?.phone || "",
+    locationId: "",
+    notes: "",
+  });
+
+  useEffect(() => {
+    if (state.currentUser) {
+      setCartForm((f) => ({
+        ...f,
+        parentName:
+          f.parentName ||
+          `${state.currentUser.firstName} ${state.currentUser.lastName}`,
+        parentPhone: f.parentPhone || state.currentUser.phone || "",
+      }));
+    }
+  }, [state.currentUser]);
 
   if (parentPage === "login") return <ParentLogin />;
 
@@ -3542,8 +4036,11 @@ function ParentShell() {
         }}
       >
         {parentPage === "home" && <ParentHome />}
-        {parentPage === "cart" && <ParentCart />}
+        {parentPage === "cart" && (
+          <ParentCart cartForm={cartForm} setCartForm={setCartForm} />
+        )}
         {parentPage === "orders" && <ParentOrders />}
+        {parentPage === "children" && <ParentMyChildren />}
         {parentPage === "changePassword" && <ChangePasswordPage />}
       </div>
       {/* Bottom Nav */}
@@ -5742,6 +6239,7 @@ function AdminMasterControl() {
   const [newLocName, setNewLocName] = useState("");
   const [tab, setTab] = useState("locations");
   const [pendingLogo, setPendingLogo] = useState(null); // { file, previewUrl }
+  const [confirmAction, setConfirmAction] = useState(null);
 
   // Re-sync local state if the global state loads fresh data from the API
   useEffect(() => {
@@ -6604,6 +7102,18 @@ function AdminMasterControl() {
           </Btn>
         </Card>
       )}
+      {confirmAction && (
+        <ConfirmModal
+          message={confirmAction.message}
+          confirmLabel={confirmAction.confirmLabel}
+          confirmVariant={confirmAction.confirmVariant}
+          onConfirm={() => {
+            confirmAction.onConfirm();
+            setConfirmAction(null);
+          }}
+          onCancel={() => setConfirmAction(null)}
+        />
+      )}
     </div>
   );
 }
@@ -7401,6 +7911,7 @@ function AdminParents() {
   const [editForm, setEditForm] = useState({}); // { firstName, lastName, phone }
   const [editSaving, setEditSaving] = useState(false);
   const [confirmAction, setConfirmAction] = useState(null);
+  const [childrenModal, setChildrenModal] = useState(null);
 
   const isSuperAdmin = state.currentUser?.role === "SUPER_ADMIN";
 
@@ -7463,6 +7974,18 @@ function AdminParents() {
       phone: p.phone || "",
       email: p.email || "",
     });
+  }
+
+  function openChildrenModal(p) {
+    // Use already-loaded children data — no API call needed
+    const children = (p.children || []).map((c) => ({
+      childName: c.name,
+      childClass: c.class,
+      orderCount: p._count?.orders || 0, // approximate — per-child count needs separate query
+      totalSpent: 0,
+      lastOrderDate: c.createdAt,
+    }));
+    setChildrenModal({ parent: p, children, loading: false });
   }
 
   async function handleSaveParent() {
@@ -7529,22 +8052,29 @@ function AdminParents() {
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr>
-              {["Name", "Email", "Phone", "Orders", "Joined", "Status", ""].map(
-                (h) => (
-                  <th
-                    key={h}
-                    className="txt-th"
-                    style={{
-                      padding: "7px 10px",
-                      textAlign: "left",
-                      background: "var(--bg2)",
-                      borderBottom: "1px solid var(--border)",
-                    }}
-                  >
-                    {h}
-                  </th>
-                ),
-              )}
+              {[
+                "Name",
+                "Email",
+                "Phone",
+                "Children",
+                "Orders",
+                "Joined",
+                "Status",
+                "",
+              ].map((h) => (
+                <th
+                  key={h}
+                  className="txt-th"
+                  style={{
+                    padding: "7px 10px",
+                    textAlign: "left",
+                    background: "var(--bg2)",
+                    borderBottom: "1px solid var(--border)",
+                  }}
+                >
+                  {h}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody className="txt-base">
@@ -7556,10 +8086,30 @@ function AdminParents() {
                 <td style={{ ...tdStyle, color: "var(--text2)" }}>{p.email}</td>
                 <td style={tdStyle}>{p.phone || "—"}</td>
                 <td style={tdStyle}>
+                  <button
+                    onClick={() => openChildrenModal(p)}
+                    style={{
+                      padding: "3px 10px",
+                      border: "1px solid var(--border)",
+                      borderRadius: 20,
+                      fontSize: 11,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      background: "var(--bg2)",
+                      color: "var(--sky-dark)",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 4,
+                    }}
+                  >
+                    👧 {p.children?.length || 0}
+                  </button>
+                </td>
+                <td style={tdStyle}>
                   <span
                     style={{
-                      background: "var(--sky)",
-                      color: "var(--sky-dark)",
+                      // background: "var(--sky)",
+                      // color: "var(--sky-dark)",
                       fontWeight: 800,
                       // fontSize: 11,
                       padding: "2px 8px",
@@ -7729,6 +8279,82 @@ function AdminParents() {
           }}
           onCancel={() => setConfirmAction(null)}
         />
+      )}
+      {childrenModal && (
+        <Modal
+          title={`Children — ${childrenModal.parent.firstName} ${childrenModal.parent.lastName}`}
+          onClose={() => setChildrenModal(null)}
+          width={440}
+        >
+          {childrenModal.children.length === 0 ? (
+            <EmptyState
+              emoji="👧"
+              message="No children registered for this parent"
+            />
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {childrenModal.children.map((c, i) => (
+                <div
+                  key={i}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                    padding: "12px 14px",
+                    background: "var(--bg2)",
+                    borderRadius: "var(--radius-sm)",
+                    border: "1px solid var(--border)",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: "50%",
+                      background: "var(--sky)",
+                      color: "var(--sky-dark)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontWeight: 800,
+                      fontSize: 16,
+                      flexShrink: 0,
+                    }}
+                  >
+                    {c.childName.charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 14 }}>
+                      {c.childName}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 11,
+                        color: "var(--text3)",
+                        marginTop: 2,
+                      }}
+                    >
+                      {c.childClass || "No class specified"}
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <div
+                style={{
+                  padding: "8px 14px",
+                  background: "var(--bg3)",
+                  borderRadius: "var(--radius-sm)",
+                  fontSize: 12,
+                  color: "var(--text2)",
+                  textAlign: "center",
+                }}
+              >
+                {childrenModal.children.length} child
+                {childrenModal.children.length !== 1 ? "ren" : ""}
+              </div>
+            </div>
+          )}
+        </Modal>
       )}
     </div>
   );
@@ -7927,6 +8553,12 @@ export default function App() {
         if (storedUser) {
           dispatch({ type: "LOGIN", user: storedUser, role });
           navigate(`/${role}`, { replace: true });
+          // Load children for parent accounts
+          if (role === "parent") {
+            api("/api/parents/children")
+              .then((children) => dispatch({ type: "SET_CHILDREN", children }))
+              .catch(() => {});
+          }
         }
       })
       .catch(() => {
