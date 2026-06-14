@@ -195,6 +195,7 @@ import {
   useReducer,
 } from "react";
 import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
+import { createPortal } from "react-dom";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
 
@@ -1414,7 +1415,7 @@ function ParentLogin() {
     phone: "",
     password: "",
     confirmPassword: "",
-    children: [{ name: "", class: "" }],
+    children: [{ firstName: "", lastName: "", class: "" }],
   });
   const [loginLoading, setLoginLoading] = useState(false);
 
@@ -1465,7 +1466,9 @@ function ParentLogin() {
       dispatch({ type: "SET_TOAST", message: "Please add at least one child" });
       return;
     }
-    if (form.children.some((c) => !c.name?.trim())) {
+    if (
+      form.children.some((c) => !c.firstName?.trim() || !c.lastName?.trim())
+    ) {
       dispatch({
         type: "SET_TOAST",
         message: "Please enter a name for each child",
@@ -1693,43 +1696,71 @@ function ParentLogin() {
                   key={i}
                   style={{
                     display: "flex",
+                    flexDirection: "column",
                     gap: 6,
-                    marginBottom: 6,
-                    alignItems: "center",
+                    marginBottom: 10,
                   }}
                 >
-                  <input
-                    placeholder="Child's name *"
-                    value={child.name}
-                    onChange={(e) => {
-                      const updated = [...form.children];
-                      updated[i] = { ...updated[i], name: e.target.value };
-                      setForm({ ...form, children: updated });
-                    }}
-                    style={{
-                      flex: 2,
-                      padding: "8px 10px",
-                      border: "1px solid var(--border)",
-                      borderRadius: "var(--radius-sm)",
-                      fontSize: 13,
-                    }}
-                  />
-                  <input
-                    placeholder="Class *"
-                    value={child.class}
-                    onChange={(e) => {
-                      const updated = [...form.children];
-                      updated[i] = { ...updated[i], class: e.target.value };
-                      setForm({ ...form, children: updated });
-                    }}
-                    style={{
-                      flex: 1,
-                      padding: "8px 10px",
-                      border: "1px solid var(--border)",
-                      borderRadius: "var(--radius-sm)",
-                      fontSize: 13,
-                    }}
-                  />
+                  <div style={{ display: "flex", gap: 6, flex: 1 }}>
+                    <input
+                      placeholder="First name *"
+                      value={child.firstName || ""}
+                      onChange={(e) => {
+                        const updated = [...form.children];
+                        updated[i] = {
+                          ...updated[i],
+                          firstName: e.target.value,
+                        };
+                        setForm({ ...form, children: updated });
+                      }}
+                      style={{
+                        flex: 1,
+                        padding: "8px 10px",
+                        border: "1px solid var(--border)",
+                        borderRadius: "var(--radius-sm)",
+                        fontSize: 13,
+                      }}
+                    />
+                    <input
+                      placeholder="Last name *"
+                      value={child.lastName || ""}
+                      onChange={(e) => {
+                        const updated = [...form.children];
+                        updated[i] = {
+                          ...updated[i],
+                          lastName: e.target.value,
+                        };
+                        setForm({ ...form, children: updated });
+                      }}
+                      style={{
+                        flex: 1,
+                        padding: "8px 10px",
+                        border: "1px solid var(--border)",
+                        borderRadius: "var(--radius-sm)",
+                        fontSize: 13,
+                      }}
+                    />
+                  </div>
+                  <div style={{ display: "flex", gap: 6, flex: 1 }}>
+                    {" "}
+                    <input
+                      placeholder="Class *"
+                      value={child.class}
+                      onChange={(e) => {
+                        const updated = [...form.children];
+                        updated[i] = { ...updated[i], class: e.target.value };
+                        setForm({ ...form, children: updated });
+                      }}
+                      style={{
+                        flex: 1,
+                        padding: "8px 10px",
+                        border: "1px solid var(--border)",
+                        borderRadius: "var(--radius-sm)",
+                        fontSize: 13,
+                      }}
+                    />
+                  </div>
+
                   {form.children.length > 1 && (
                     <button
                       onClick={() =>
@@ -2306,6 +2337,17 @@ function ParentHome() {
       .catch(() => {});
   }, []);
 
+  useEffect(() => {
+    if (selectedProduct) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [selectedProduct]);
+
   // Products come from initAppData via SET_INITIAL_DATA.
   // Show a loading message until at least one product arrives.
   const productsLoaded = state.products.length > 0;
@@ -2409,39 +2451,6 @@ function ParentHome() {
           {state.settings.noticeText}
         </div>
       )}
-
-      {/* ── Hero strip ───────────────────────────────── */}
-      <div
-        style={{
-          background: "linear-gradient(135deg, #1a5c47 0%, #2d8c6e 100%)",
-          padding: isDesktop ? "48px 0" : "32px 0",
-          marginBottom: 32,
-          textAlign: "center",
-        }}
-      >
-        <h1
-          style={{
-            fontFamily: "var(--font-display)",
-            fontWeight: 800,
-            fontSize: isDesktop ? 36 : 26,
-            color: "#fff",
-            letterSpacing: "-.03em",
-            marginBottom: 8,
-          }}
-        >
-          {state.settings.welcomeTitle || "Wonderworld Uniforms"}
-        </h1>
-        <p
-          style={{
-            fontSize: 14,
-            color: "rgba(255,255,255,.75)",
-            maxWidth: 480,
-            margin: "0 auto",
-          }}
-        >
-          {state.settings.welcomeText}
-        </p>
-      </div>
 
       {/* ── Filter bar ───────────────────────────────── */}
       <div
@@ -2594,261 +2603,264 @@ function ParentHome() {
       )}
 
       {/* ── Premium product detail modal ──────────── */}
-      {selectedProduct && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,.5)",
-            zIndex: 9999,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 16,
-            overflowY: "auto",
-          }}
-          onClick={() => setSelectedProduct(null)}
-        >
+      {selectedProduct &&
+        createPortal(
           <div
-            onClick={(e) => e.stopPropagation()}
-            className="animate-pop"
             style={{
-              background: "#fff",
-              borderRadius: 16,
-              width: "100%",
-              maxWidth: 860,
-              maxHeight: "90vh",
-              overflowY: "auto",
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: "rgba(0,0,0,.5)",
+              zIndex: 9999,
               display: "flex",
-              flexDirection: isDesktop ? "row" : "column",
-              boxShadow: "0 24px 80px rgba(0,0,0,.2)",
-              position: "absolute",
-              top: "500px",
+              alignItems: "flex-start",
+              justifyContent: "center",
+              padding: "40px 16px",
+              overflowY: "auto",
             }}
+            onClick={() => setSelectedProduct(null)}
           >
-            {/* Left — image */}
             <div
+              onClick={(e) => e.stopPropagation()}
+              className="animate-pop"
               style={{
-                flex: isDesktop ? "0 0 44%" : "none",
-                aspectRatio: isDesktop ? "unset" : "4/3",
-                background: "#f3f4f6",
-                borderRadius: isDesktop ? "16px 0 0 16px" : "16px 16px 0 0",
-                overflow: "hidden",
-                minHeight: isDesktop ? 420 : 240,
-              }}
-            >
-              <ProductImageGallery
-                images={selectedProduct.images}
-                imageEmoji={selectedProduct.imageEmoji}
-                imageBg={selectedProduct.imageBg}
-                height="100%"
-                showThumbs={true}
-              />
-            </div>
-
-            {/* Right — info */}
-            <div
-              style={{
-                flex: 1,
-                padding: isDesktop ? "36px 36px 32px" : "24px 20px",
+                background: "#fff",
+                borderRadius: 16,
+                width: "100%",
+                maxWidth: 860,
+                maxHeight: "90vh",
+                overflowY: "auto",
                 display: "flex",
-                flexDirection: "column",
-                gap: 16,
+                flexDirection: isDesktop ? "row" : "column",
+                boxShadow: "0 24px 80px rgba(0,0,0,.2)",
               }}
             >
-              {/* Close */}
-              <button
-                onClick={() => setSelectedProduct(null)}
+              {/* Left — image */}
+              <div
                 style={{
-                  alignSelf: "flex-end",
-                  background: "none",
-                  border: "none",
-                  fontSize: 20,
-                  color: "#aaa",
-                  cursor: "pointer",
-                  lineHeight: 1,
-                  padding: 0,
+                  flex: isDesktop ? "0 0 44%" : "none",
+                  aspectRatio: isDesktop ? "unset" : "4/3",
+                  background: "#f3f4f6",
+                  borderRadius: isDesktop ? "16px 0 0 16px" : "16px 16px 0 0",
+                  overflow: "hidden",
+                  minHeight: isDesktop ? 420 : 240,
                 }}
               >
-                ✕
-              </button>
-
-              {/* Name + price */}
-              <div>
-                <h2
-                  style={{
-                    fontSize: 22,
-                    fontWeight: 800,
-                    color: "#111",
-                    letterSpacing: "-.02em",
-                    marginBottom: 6,
-                  }}
-                >
-                  {selectedProduct.name}
-                </h2>
-                <div style={{ fontSize: 22, fontWeight: 700, color: "#111" }}>
-                  ${selectedProduct.sellingPrice.toFixed(2)}
-                </div>
+                <ProductImageGallery
+                  images={selectedProduct.images}
+                  imageEmoji={selectedProduct.imageEmoji}
+                  imageBg={selectedProduct.imageBg}
+                  height="100%"
+                  showThumbs={true}
+                />
               </div>
 
-              {/* Description */}
-              {selectedProduct.description && (
-                <p style={{ fontSize: 14, color: "#555", lineHeight: 1.6 }}>
-                  {selectedProduct.description}
-                </p>
-              )}
-
-              {/* Size selector */}
-              <div>
-                <div
+              {/* Right — info */}
+              <div
+                style={{
+                  flex: 1,
+                  padding: isDesktop ? "36px 36px 32px" : "24px 20px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 16,
+                }}
+              >
+                {/* Close */}
+                <button
+                  onClick={() => setSelectedProduct(null)}
                   style={{
-                    fontSize: 12,
-                    fontWeight: 700,
-                    color: "#888",
-                    letterSpacing: ".06em",
-                    textTransform: "uppercase",
-                    marginBottom: 10,
+                    alignSelf: "flex-end",
+                    background: "none",
+                    border: "none",
+                    fontSize: 20,
+                    color: "#aaa",
+                    cursor: "pointer",
+                    lineHeight: 1,
+                    padding: 0,
                   }}
                 >
-                  Size{" "}
-                  {addSize && (
+                  ✕
+                </button>
+
+                {/* Name + price */}
+                <div>
+                  <h2
+                    style={{
+                      fontSize: 22,
+                      fontWeight: 800,
+                      color: "#111",
+                      letterSpacing: "-.02em",
+                      marginBottom: 6,
+                    }}
+                  >
+                    {selectedProduct.name}
+                  </h2>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: "#111" }}>
+                    ${selectedProduct.sellingPrice.toFixed(2)}
+                  </div>
+                </div>
+
+                {/* Description */}
+                {selectedProduct.description && (
+                  <p style={{ fontSize: 14, color: "#555", lineHeight: 1.6 }}>
+                    {selectedProduct.description}
+                  </p>
+                )}
+
+                {/* Size selector */}
+                <div>
+                  <div
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 700,
+                      color: "#888",
+                      letterSpacing: ".06em",
+                      textTransform: "uppercase",
+                      marginBottom: 10,
+                    }}
+                  >
+                    Size{" "}
+                    {addSize && (
+                      <span
+                        style={{
+                          fontWeight: 400,
+                          color: "#111",
+                          textTransform: "none",
+                          letterSpacing: 0,
+                        }}
+                      >
+                        — {addSize} (Age {addSize.replace("T", "")})
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    {sortSizes(selectedProduct?.sizes).map((s) => (
+                      <button
+                        key={s}
+                        onClick={() => setAddSize(s)}
+                        style={{
+                          padding: "10px 16px",
+                          borderRadius: 8,
+                          fontWeight: 700,
+                          fontSize: 13,
+                          cursor: "pointer",
+                          border: `2px solid ${addSize === s ? "#111" : "#e5e7eb"}`,
+                          background: addSize === s ? "#111" : "#fff",
+                          color: addSize === s ? "#fff" : "#555",
+                          transition: "all .15s",
+                          minWidth: 52,
+                        }}
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Quantity */}
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <div
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 700,
+                      color: "#888",
+                      letterSpacing: ".06em",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    Qty
+                  </div>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      border: "1.5px solid #e5e7eb",
+                      borderRadius: 8,
+                      overflow: "hidden",
+                    }}
+                  >
+                    <button
+                      onClick={() => setAddQty(Math.max(1, addQty - 1))}
+                      style={{
+                        width: 38,
+                        height: 38,
+                        background: "none",
+                        border: "none",
+                        fontSize: 18,
+                        color: "#555",
+                        cursor: "pointer",
+                        fontWeight: 300,
+                      }}
+                    >
+                      −
+                    </button>
                     <span
                       style={{
-                        fontWeight: 400,
-                        color: "#111",
-                        textTransform: "none",
-                        letterSpacing: 0,
-                      }}
-                    >
-                      — {addSize} (Age {addSize.replace("T", "")})
-                    </span>
-                  )}
-                </div>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  {sortSizes(selectedProduct?.sizes).map((s) => (
-                    <button
-                      key={s}
-                      onClick={() => setAddSize(s)}
-                      style={{
-                        padding: "10px 16px",
-                        borderRadius: 8,
+                        width: 36,
+                        textAlign: "center",
                         fontWeight: 700,
-                        fontSize: 13,
-                        cursor: "pointer",
-                        border: `2px solid ${addSize === s ? "#111" : "#e5e7eb"}`,
-                        background: addSize === s ? "#111" : "#fff",
-                        color: addSize === s ? "#fff" : "#555",
-                        transition: "all .15s",
-                        minWidth: 52,
+                        fontSize: 15,
                       }}
                     >
-                      {s}
+                      {addQty}
+                    </span>
+                    <button
+                      onClick={() => setAddQty(addQty + 1)}
+                      style={{
+                        width: 38,
+                        height: 38,
+                        background: "none",
+                        border: "none",
+                        fontSize: 18,
+                        color: "#555",
+                        cursor: "pointer",
+                        fontWeight: 300,
+                      }}
+                    >
+                      +
                     </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Quantity */}
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <div
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 700,
-                    color: "#888",
-                    letterSpacing: ".06em",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  Qty
-                </div>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    border: "1.5px solid #e5e7eb",
-                    borderRadius: 8,
-                    overflow: "hidden",
-                  }}
-                >
-                  <button
-                    onClick={() => setAddQty(Math.max(1, addQty - 1))}
-                    style={{
-                      width: 38,
-                      height: 38,
-                      background: "none",
-                      border: "none",
-                      fontSize: 18,
-                      color: "#555",
-                      cursor: "pointer",
-                      fontWeight: 300,
-                    }}
-                  >
-                    −
-                  </button>
+                  </div>
                   <span
                     style={{
-                      width: 36,
-                      textAlign: "center",
-                      fontWeight: 700,
-                      fontSize: 15,
-                    }}
-                  >
-                    {addQty}
-                  </span>
-                  <button
-                    onClick={() => setAddQty(addQty + 1)}
-                    style={{
-                      width: 38,
-                      height: 38,
-                      background: "none",
-                      border: "none",
+                      marginLeft: "auto",
                       fontSize: 18,
-                      color: "#555",
-                      cursor: "pointer",
-                      fontWeight: 300,
+                      fontWeight: 700,
+                      color: "#111",
                     }}
                   >
-                    +
-                  </button>
+                    ${(selectedProduct.sellingPrice * addQty).toFixed(2)}
+                  </span>
                 </div>
-                <span
-                  style={{
-                    marginLeft: "auto",
-                    fontSize: 18,
-                    fontWeight: 700,
-                    color: "#111",
-                  }}
-                >
-                  ${(selectedProduct.sellingPrice * addQty).toFixed(2)}
-                </span>
-              </div>
 
-              {/* CTA */}
-              <button
-                onClick={handleAddToCart}
-                style={{
-                  width: "100%",
-                  padding: "14px",
-                  background: "#111",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: 10,
-                  fontSize: 15,
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  letterSpacing: ".01em",
-                  transition: "background .15s",
-                  marginTop: 4,
-                }}
-                onMouseEnter={(e) => (e.target.style.background = "#333")}
-                onMouseLeave={(e) => (e.target.style.background = "#111")}
-              >
-                Add to Cart
-              </button>
+                {/* CTA */}
+                <button
+                  onClick={handleAddToCart}
+                  style={{
+                    width: "100%",
+                    padding: "14px",
+                    background: "#111",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: 10,
+                    fontSize: 15,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    letterSpacing: ".01em",
+                    transition: "background .15s",
+                    marginTop: 4,
+                  }}
+                  onMouseEnter={(e) => (e.target.style.background = "#333")}
+                  onMouseLeave={(e) => (e.target.style.background = "#111")}
+                >
+                  Add to Cart
+                </button>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }
@@ -2892,7 +2904,9 @@ function ParentCart({ cartForm, setCartForm }) {
       setIsFirstOrder(true);
       return;
     }
-    const child = state.children.find((c) => c.name === name);
+    const child = state.children.find(
+      (c) => `${c.firstName} ${c.lastName}` === name,
+    );
     const params = child
       ? `childId=${child.id}`
       : `childName=${encodeURIComponent(name)}`;
@@ -2905,7 +2919,7 @@ function ParentCart({ cartForm, setCartForm }) {
     if (state.children.length === 1) {
       setForm((f) => ({
         ...f,
-        childName: state.children[0].name,
+        childName: `${state.children[0].firstName} ${state.children[0].lastName}`,
         childClass: state.children[0].class || f.childClass,
       }));
     }
@@ -2927,7 +2941,9 @@ function ParentCart({ cartForm, setCartForm }) {
       return;
     }
     setSubmitting(true);
-    const child = state.children.find((c) => c.name === form.childName);
+    const child = state.children.find(
+      (c) => `${c.firstName} ${c.lastName}` === form.childName,
+    );
     try {
       const newOrder = await api("/api/orders", {
         method: "POST",
@@ -3469,9 +3485,8 @@ function ParentCart({ cartForm, setCartForm }) {
                             marginBottom: 8,
                           }}
                         >
-                          {state.children[0].name}
-                          {state.children[0].class &&
-                            ` — ${state.children[0].class}`}
+                          {state.children[0].firstName}{" "}
+                          {state.children[0].lastName}
                         </div>
                       </div>
                     );
@@ -3493,7 +3508,9 @@ function ParentCart({ cartForm, setCartForm }) {
                           value={form.childName}
                           onChange={(e) => {
                             const child = state.children.find(
-                              (c) => c.name === e.target.value,
+                              (c) =>
+                                `${c.firstName} ${c.lastName}` ===
+                                e.target.value,
                             );
                             setForm({
                               ...form,
@@ -3515,9 +3532,11 @@ function ParentCart({ cartForm, setCartForm }) {
                         >
                           <option value="">— Select child —</option>
                           {state.children.map((c) => (
-                            <option key={c.id} value={c.name}>
-                              {c.name}
-                              {c.class ? ` (${c.class})` : ""}
+                            <option
+                              key={c.id}
+                              value={`${c.firstName} ${c.lastName}`}
+                            >
+                              {c.firstName} {c.lastName}
                             </option>
                           ))}
                         </select>
@@ -3550,7 +3569,8 @@ function ParentCart({ cartForm, setCartForm }) {
                 if (f.fieldKey === "childClass") {
                   // If a registered child is selected, show class as read-only
                   const selectedChild = state.children.find(
-                    (c) => c.name === form.childName?.trim(),
+                    (c) =>
+                      `${c.firstName} ${c.lastName}` === form.childName?.trim(),
                   );
                   if (selectedChild) {
                     return (
@@ -4061,17 +4081,28 @@ function ChangePasswordPage() {
 function ParentMyChildren() {
   const { state, dispatch } = useApp();
   const [children, setChildren] = useState(state.children || []);
-  const [newChild, setNewChild] = useState({ name: "", class: "" });
+  const [newChild, setNewChild] = useState({
+    firstName: "",
+    lastName: "",
+    class: "",
+  });
   const [adding, setAdding] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const [editingChild, setEditingChild] = useState(null); // { id, name, class }
-  const [editForm, setEditForm] = useState({ name: "", class: "" });
+  const [editForm, setEditForm] = useState({
+    firstName: "",
+    lastName: "",
+    class: "",
+  });
   const [editSaving, setEditSaving] = useState(false);
 
   async function handleAdd() {
-    if (!newChild.name.trim()) {
-      dispatch({ type: "SET_TOAST", message: "Child name is required" });
+    if (!newChild.firstName?.trim() || !newChild.lastName?.trim()) {
+      dispatch({
+        type: "SET_TOAST",
+        message: "First and last name are required",
+      });
       return;
     }
     if (!newChild.class.trim()) {
@@ -4082,12 +4113,16 @@ function ParentMyChildren() {
     try {
       const child = await api("/api/parents/children", {
         method: "POST",
-        body: { name: newChild.name.trim(), class: newChild.class.trim() },
+        body: {
+          firstName: newChild.firstName.trim(),
+          lastName: newChild.lastName.trim(),
+          class: newChild.class.trim(),
+        },
       });
       const updated = [...children, child];
       setChildren(updated);
       dispatch({ type: "SET_CHILDREN", children: updated });
-      setNewChild({ name: "", class: "" });
+      setNewChild({ firstName: "", lastName: "", class: "" });
       setAdding(false);
       dispatch({ type: "SET_TOAST", message: "Child added!" });
     } catch (err) {
@@ -4101,8 +4136,11 @@ function ParentMyChildren() {
   }
 
   async function handleUpdate() {
-    if (!editForm.name.trim()) {
-      dispatch({ type: "SET_TOAST", message: "Child name is required" });
+    if (!editForm.firstName?.trim() || !editForm.lastName?.trim()) {
+      dispatch({
+        type: "SET_TOAST",
+        message: "First and last name are required",
+      });
       return;
     }
     if (!editForm.class?.trim()) {
@@ -4113,7 +4151,11 @@ function ParentMyChildren() {
     try {
       const updated = await api(`/api/parents/children/${editingChild.id}`, {
         method: "PUT",
-        body: { name: editForm.name.trim(), class: editForm.class.trim() },
+        body: {
+          firstName: editForm.firstName.trim(),
+          lastName: editForm.lastName.trim(),
+          class: editForm.class.trim(),
+        },
       });
       const updatedList = children.map((c) =>
         c.id === updated.id ? updated : c,
@@ -4171,9 +4213,15 @@ function ParentMyChildren() {
                 }}
               >
                 <Input
-                  label="Child Name"
-                  value={editForm.name}
-                  onChange={(v) => setEditForm({ ...editForm, name: v })}
+                  label="Child First Name"
+                  value={editForm.firstName}
+                  onChange={(v) => setEditForm({ ...editForm, firstName: v })}
+                  required
+                />
+                <Input
+                  label="Child Last Name"
+                  value={editForm.lastName}
+                  onChange={(v) => setEditForm({ ...editForm, lastName: v })}
                   required
                 />
                 <Input
@@ -4225,10 +4273,12 @@ function ParentMyChildren() {
                     flexShrink: 0,
                   }}
                 >
-                  {c.name.charAt(0).toUpperCase()}
+                  {c.firstName.charAt(0).toUpperCase()}
                 </div>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 700 }}>{c.name}</div>
+                  <div style={{ fontWeight: 700 }}>
+                    {c.firstName} {c.lastName}
+                  </div>
                   {c.class && (
                     <div style={{ fontSize: 12, color: "var(--text3)" }}>
                       {c.class}
@@ -4238,7 +4288,11 @@ function ParentMyChildren() {
                 <button
                   onClick={() => {
                     setEditingChild(c);
-                    setEditForm({ name: c.name, class: c.class || "" });
+                    setEditForm({
+                      firstName: c.firstName,
+                      lastName: c.lastName,
+                      class: c.class || "",
+                    });
                   }}
                   style={{
                     padding: "4px 10px",
@@ -4271,12 +4325,22 @@ function ParentMyChildren() {
             padding: 14,
           }}
         >
-          <Input
-            label="Child Name"
-            value={newChild.name}
-            onChange={(v) => setNewChild({ ...newChild, name: v })}
-            required
-          />
+          <div style={{ display: "flex", gap: 8 }}>
+            <Input
+              label="First Name"
+              value={newChild.firstName || ""}
+              onChange={(v) => setNewChild({ ...newChild, firstName: v })}
+              required
+              style={{ flex: 1 }}
+            />
+            <Input
+              label="Last Name"
+              value={newChild.lastName || ""}
+              onChange={(v) => setNewChild({ ...newChild, lastName: v })}
+              required
+              style={{ flex: 1 }}
+            />
+          </div>
           <Input
             label="Class"
             value={newChild.class}
@@ -8498,7 +8562,7 @@ function AdminParents() {
   function openChildrenModal(p) {
     // Use already-loaded children data — no API call needed
     const children = (p.children || []).map((c) => ({
-      childName: c.name,
+      childName: `${c.firstName} ${c.lastName}`,
       childClass: c.class,
       orderCount: p._count?.orders || 0, // approximate — per-child count needs separate query
       totalSpent: 0,
