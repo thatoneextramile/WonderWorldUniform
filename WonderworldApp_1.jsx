@@ -1418,6 +1418,8 @@ function ParentLogin() {
     children: [{ firstName: "", lastName: "", class: "" }],
   });
   const [loginLoading, setLoginLoading] = useState(false);
+  const windowWidth = useWindowWidth();
+  const isDesktop = windowWidth >= 1024;
 
   async function handleLogin() {
     if (!email || !pass) {
@@ -1450,6 +1452,7 @@ function ParentLogin() {
       setLoginLoading(false);
     }
   }
+
   async function handleRegister() {
     if (!form.firstName || !form.email || !form.password) {
       dispatch({
@@ -1505,337 +1508,488 @@ function ParentLogin() {
       setLoginLoading(false);
     }
   }
+
+  // Shared input style
+  const inputStyle = {
+    width: "100%",
+    padding: "12px 14px",
+    border: "1.5px solid #e5e7eb",
+    borderRadius: 8,
+    fontSize: 14,
+    outline: "none",
+    boxSizing: "border-box",
+    fontFamily: "var(--font-body)",
+    background: "#fff",
+    color: "#111",
+  };
+  const labelStyle = {
+    fontSize: 12,
+    fontWeight: 600,
+    color: "#555",
+    marginBottom: 6,
+    display: "block",
+  };
+
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "linear-gradient(135deg,var(--mint) 0%,var(--sky) 100%)",
-        padding: 16,
-      }}
-    >
+    <div style={{ minHeight: "100vh", display: "flex", background: "#fff" }}>
       <div
-        className="animate-pop"
         style={{
-          background: "var(--bg)",
-          borderRadius: "var(--radius)",
-          padding: 32,
-          width: "100%",
-          maxWidth: 380,
-          boxShadow: "var(--shadow-lg)",
+          flex: 1,
+          overflowY: "auto",
+          display: "flex",
+          alignItems: isReg ? "flex-start" : "center",
+          justifyContent: "center",
+          padding: isDesktop ? "48px 80px" : "32px 20px",
+          background: "#fff",
+          minHeight: "100vh",
         }}
       >
-        <div style={{ textAlign: "center", marginBottom: 24 }}>
-          <div
-            style={{
-              width: 60,
-              height: 60,
-              //borderRadius: "95%",
-              // background: "var(--ww-bg)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: 28,
-              margin: "0 auto 12px",
-              overflow: "hidden",
-            }}
-          >
-            {/* {state.settings.logoEmoji} */}
-            {state.settings.logoUrl ? (
-              <img
-                src={state.settings.logoUrl}
-                alt="Logo"
-                style={{ width: "100%", height: "100%", objectFit: "contain" }}
-              />
-            ) : (
-              state.settings.logoEmoji
-            )}
-          </div>
-          <h1
-            style={{
-              fontFamily: "var(--font-display)",
-              fontWeight: 700,
-              fontSize: 20,
-              color: "var(--mint-dark)",
-            }}
-          >
-            {state.settings.systemName}
-          </h1>
-          <p style={{ fontSize: 12, color: "var(--text3)", marginTop: 4 }}>
-            {isReg ? "Create your parent account" : "Parent Portal"}
-          </p>
-        </div>
-        {!isReg ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <Input
-              label="Email"
-              value={email}
-              onChange={setEmail}
-              type="email"
-              placeholder="parent@email.com"
-              required
-            />
-            <Input
-              label="Password"
-              value={pass}
-              onChange={setPass}
-              type="password"
-              placeholder="••••••••"
-              required
-            />
-            <Btn
-              onClick={handleLogin}
-              fullWidth
-              size="lg"
-              disabled={loginLoading}
-              style={{ marginTop: 4 }}
-              variant="admin"
-            >
-              {loginLoading ? "Logging in…" : "Log In"}
-            </Btn>
-            <p
+        <div
+          className="animate-pop"
+          style={{ width: "100%", maxWidth: isReg ? 560 : 420 }}
+        >
+          {/* Header */}
+          <div style={{ marginBottom: 32 }}>
+            <div
               style={{
-                fontSize: 11,
-                color: "var(--text3)",
-                textAlign: "center",
-                marginTop: 10,
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                marginBottom: 20,
               }}
             >
-              Forgot your password? Contact us at{" "}
-              <a
-                className="txt-base"
-                href="mailto:info@wonderworldmontessori.ca"
+              {state.settings.logoUrl ? (
+                <img
+                  src={state.settings.logoUrl}
+                  alt="Logo"
+                  style={{
+                    width: 32,
+                    height: 32,
+                    objectFit: "contain",
+                    borderRadius: 8,
+                  }}
+                />
+              ) : (
+                <span style={{ fontSize: 24 }}>{state.settings.logoEmoji}</span>
+              )}
+              <span style={{ fontWeight: 800, fontSize: 16, color: "#111" }}>
+                {state.settings.systemName}
+              </span>
+            </div>
+            <h2
+              style={{
+                fontSize: isReg ? 24 : 28,
+                fontWeight: 800,
+                color: "#111",
+                letterSpacing: "-.02em",
+                margin: 0,
+              }}
+            >
+              {isReg ? "Create your account" : "Welcome back"}
+            </h2>
+            <p style={{ fontSize: 14, color: "#888", marginTop: 8 }}>
+              {isReg
+                ? "Register to start ordering uniforms"
+                : "Sign in to your parent account"}
+            </p>
+          </div>
+
+          {/* ── Login form ─────────────────────────────── */}
+          {!isReg ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div>
+                <label style={labelStyle}>Email address</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="parent@email.com"
+                  style={inputStyle}
+                  onFocus={(e) => (e.target.style.borderColor = "#111")}
+                  onBlur={(e) => (e.target.style.borderColor = "#e5e7eb")}
+                />
+              </div>
+              <div>
+                <label style={labelStyle}>Password</label>
+                <input
+                  type="password"
+                  value={pass}
+                  onChange={(e) => setPass(e.target.value)}
+                  placeholder="••••••••"
+                  style={inputStyle}
+                  onFocus={(e) => (e.target.style.borderColor = "#111")}
+                  onBlur={(e) => (e.target.style.borderColor = "#e5e7eb")}
+                />
+              </div>
+              <button
+                onClick={handleLogin}
+                disabled={loginLoading}
                 style={{
-                  color: "var(--sky-dark)",
-                  fontWeight: 600,
-                  textDecoration: "none",
+                  width: "100%",
+                  padding: "13px",
+                  background: loginLoading ? "#ccc" : "#111",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: 10,
+                  fontSize: 15,
+                  fontWeight: 700,
+                  cursor: loginLoading ? "not-allowed" : "pointer",
+                  marginTop: 4,
+                  fontFamily: "var(--font-body)",
                 }}
               >
-                info@wonderworldmontessori.ca
-              </a>
-            </p>
-            <p
-              style={{
-                textAlign: "center",
-                fontSize: 12,
-                color: "var(--text3)",
-              }}
-            >
-              New to Wonderworld?{" "}
+                {loginLoading ? "Signing in…" : "Sign In"}
+              </button>
+              <p
+                style={{
+                  fontSize: 11,
+                  color: "#888",
+                  textAlign: "center",
+                  marginTop: 4,
+                }}
+              >
+                Forgot your password? Contact us at{" "}
+                <a
+                  href="mailto:info@wonderworldmontessori.ca"
+                  style={{
+                    color: "#1a5c47",
+                    fontWeight: 600,
+                    textDecoration: "none",
+                  }}
+                >
+                  info@wonderworldmontessori.ca
+                </a>
+              </p>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12,
+                  margin: "4px 0",
+                }}
+              >
+                <div style={{ flex: 1, height: 1, background: "#f3f4f6" }} />
+                <span style={{ fontSize: 12, color: "#aaa" }}>or</span>
+                <div style={{ flex: 1, height: 1, background: "#f3f4f6" }} />
+              </div>
               <button
                 onClick={() => setIsReg(true)}
                 style={{
-                  background: "none",
-                  border: "none",
-                  color: "var(--sky-dark-bg)",
-                  fontWeight: 700,
+                  width: "100%",
+                  padding: "12px",
+                  background: "#fff",
+                  color: "#111",
+                  border: "1.5px solid #e5e7eb",
+                  borderRadius: 10,
+                  fontSize: 14,
+                  fontWeight: 600,
                   cursor: "pointer",
-                  fontSize: 12,
+                  fontFamily: "var(--font-body)",
                 }}
               >
-                Register here
+                Create an account
               </button>
-            </p>
-          </div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: 10,
-              }}
-            >
-              <Input
-                label="First Name"
-                value={form.firstName}
-                onChange={(v) => setForm({ ...form, firstName: v })}
-                required
-              />
-              <Input
-                label="Last Name"
-                value={form.lastName}
-                onChange={(v) => setForm({ ...form, lastName: v })}
-              />
             </div>
-            <Input
-              label="Email"
-              value={form.email}
-              onChange={(v) => setForm({ ...form, email: v })}
-              type="email"
-              placeholder="email@example.com"
-              required
-            />
-            <Input
-              label="Phone"
-              value={form.phone}
-              onChange={(v) => setForm({ ...form, phone: v })}
-              placeholder="123-456-7890"
-            />
-            <Input
-              label="Password"
-              value={form.password}
-              onChange={(v) => setForm({ ...form, password: v })}
-              type="password"
-              placeholder="Create a password"
-              required
-            />
-            <Input
-              label="Re-enter Password"
-              value={form.confirmPassword}
-              onChange={(v) => setForm({ ...form, confirmPassword: v })}
-              type="password"
-              required
-            />
-            <div>
-              <label className="txt-label">Children</label>
-              {form.children.map((child, i) => (
-                <div
-                  key={i}
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 6,
-                    marginBottom: 10,
-                  }}
-                >
-                  <div style={{ display: "flex", gap: 6, flex: 1 }}>
-                    <input
-                      placeholder="First name *"
-                      value={child.firstName || ""}
-                      onChange={(e) => {
-                        const updated = [...form.children];
-                        updated[i] = {
-                          ...updated[i],
-                          firstName: e.target.value,
-                        };
-                        setForm({ ...form, children: updated });
-                      }}
-                      style={{
-                        flex: 1,
-                        padding: "8px 10px",
-                        border: "1px solid var(--border)",
-                        borderRadius: "var(--radius-sm)",
-                        fontSize: 13,
-                      }}
-                    />
-                    <input
-                      placeholder="Last name *"
-                      value={child.lastName || ""}
-                      onChange={(e) => {
-                        const updated = [...form.children];
-                        updated[i] = {
-                          ...updated[i],
-                          lastName: e.target.value,
-                        };
-                        setForm({ ...form, children: updated });
-                      }}
-                      style={{
-                        flex: 1,
-                        padding: "8px 10px",
-                        border: "1px solid var(--border)",
-                        borderRadius: "var(--radius-sm)",
-                        fontSize: 13,
-                      }}
-                    />
-                  </div>
-                  <div style={{ display: "flex", gap: 6, flex: 1 }}>
-                    {" "}
-                    <input
-                      placeholder="Class *"
-                      value={child.class}
-                      onChange={(e) => {
-                        const updated = [...form.children];
-                        updated[i] = { ...updated[i], class: e.target.value };
-                        setForm({ ...form, children: updated });
-                      }}
-                      style={{
-                        flex: 1,
-                        padding: "8px 10px",
-                        border: "1px solid var(--border)",
-                        borderRadius: "var(--radius-sm)",
-                        fontSize: 13,
-                      }}
-                    />
-                  </div>
+          ) : (
+            /* ── Register form ───────────────────────── */
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              {/* Name row */}
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: 12,
+                }}
+              >
+                <div>
+                  <label style={labelStyle}>First Name *</label>
+                  <input
+                    value={form.firstName}
+                    onChange={(e) =>
+                      setForm({ ...form, firstName: e.target.value })
+                    }
+                    placeholder="Jane"
+                    style={inputStyle}
+                    onFocus={(e) => (e.target.style.borderColor = "#111")}
+                    onBlur={(e) => (e.target.style.borderColor = "#e5e7eb")}
+                  />
+                </div>
+                <div>
+                  <label style={labelStyle}>Last Name</label>
+                  <input
+                    value={form.lastName}
+                    onChange={(e) =>
+                      setForm({ ...form, lastName: e.target.value })
+                    }
+                    placeholder="Smith"
+                    style={inputStyle}
+                    onFocus={(e) => (e.target.style.borderColor = "#111")}
+                    onBlur={(e) => (e.target.style.borderColor = "#e5e7eb")}
+                  />
+                </div>
+              </div>
 
-                  {form.children.length > 1 && (
-                    <button
-                      onClick={() =>
-                        setForm({
-                          ...form,
-                          children: form.children.filter((_, j) => j !== i),
-                        })
-                      }
+              {/* Email */}
+              <div>
+                <label style={labelStyle}>Email address *</label>
+                <input
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  placeholder="parent@email.com"
+                  style={inputStyle}
+                  onFocus={(e) => (e.target.style.borderColor = "#111")}
+                  onBlur={(e) => (e.target.style.borderColor = "#e5e7eb")}
+                />
+              </div>
+
+              {/* Phone */}
+              <div>
+                <label style={labelStyle}>Phone</label>
+                <input
+                  type="tel"
+                  value={form.phone}
+                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  placeholder="123-456-7890"
+                  style={inputStyle}
+                  onFocus={(e) => (e.target.style.borderColor = "#111")}
+                  onBlur={(e) => (e.target.style.borderColor = "#e5e7eb")}
+                />
+              </div>
+
+              {/* Password row */}
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: 12,
+                }}
+              >
+                <div>
+                  <label style={labelStyle}>Password *</label>
+                  <input
+                    type="password"
+                    value={form.password}
+                    onChange={(e) =>
+                      setForm({ ...form, password: e.target.value })
+                    }
+                    placeholder="Create a password"
+                    style={inputStyle}
+                    onFocus={(e) => (e.target.style.borderColor = "#111")}
+                    onBlur={(e) => (e.target.style.borderColor = "#e5e7eb")}
+                  />
+                </div>
+                <div>
+                  <label style={labelStyle}>Re-enter Password *</label>
+                  <input
+                    type="password"
+                    value={form.confirmPassword}
+                    onChange={(e) =>
+                      setForm({ ...form, confirmPassword: e.target.value })
+                    }
+                    placeholder="••••••••"
+                    style={inputStyle}
+                    onFocus={(e) => (e.target.style.borderColor = "#111")}
+                    onBlur={(e) => (e.target.style.borderColor = "#e5e7eb")}
+                  />
+                </div>
+              </div>
+
+              {/* Children */}
+              <div>
+                <div style={{ marginBottom: 12 }}>
+                  <label style={{ ...labelStyle, fontSize: 13, color: "#111" }}>
+                    Children
+                  </label>
+                  <span style={{ fontSize: 12, color: "#888" }}>
+                    At least one child is required
+                  </span>
+                </div>
+                {form.children.map((child, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      background: "#f9fafb",
+                      border: "1.5px solid #e5e7eb",
+                      borderRadius: 10,
+                      padding: "14px 16px",
+                      marginBottom: 10,
+                    }}
+                  >
+                    <div
                       style={{
-                        background: "none",
-                        border: "none",
-                        color: "var(--peach-dark)",
-                        cursor: "pointer",
-                        fontSize: 16,
-                        fontWeight: 700,
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        marginBottom: 10,
                       }}
                     >
-                      ×
-                    </button>
-                  )}
-                </div>
-              ))}
+                      <span
+                        style={{
+                          fontSize: 12,
+                          fontWeight: 700,
+                          color: "#555",
+                          letterSpacing: ".04em",
+                          textTransform: "uppercase",
+                        }}
+                      >
+                        Child {form.children.length > 1 ? i + 1 : ""}
+                      </span>
+                      {form.children.length > 1 && (
+                        <button
+                          onClick={() =>
+                            setForm({
+                              ...form,
+                              children: form.children.filter((_, j) => j !== i),
+                            })
+                          }
+                          style={{
+                            background: "none",
+                            border: "none",
+                            color: "#f87171",
+                            cursor: "pointer",
+                            fontSize: 13,
+                            fontWeight: 600,
+                            padding: 0,
+                          }}
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: isDesktop ? "1fr 1fr" : "1fr",
+                        gap: 10,
+                        marginBottom: 10,
+                      }}
+                    >
+                      <div>
+                        <label style={labelStyle}>First Name *</label>
+                        <input
+                          placeholder="Child's first name"
+                          value={child.firstName || ""}
+                          onChange={(e) => {
+                            const updated = [...form.children];
+                            updated[i] = {
+                              ...updated[i],
+                              firstName: e.target.value,
+                            };
+                            setForm({ ...form, children: updated });
+                          }}
+                          style={inputStyle}
+                          onFocus={(e) => (e.target.style.borderColor = "#111")}
+                          onBlur={(e) =>
+                            (e.target.style.borderColor = "#e5e7eb")
+                          }
+                        />
+                      </div>
+                      <div>
+                        <label style={labelStyle}>Last Name *</label>
+                        <input
+                          placeholder="Child's last name"
+                          value={child.lastName || ""}
+                          onChange={(e) => {
+                            const updated = [...form.children];
+                            updated[i] = {
+                              ...updated[i],
+                              lastName: e.target.value,
+                            };
+                            setForm({ ...form, children: updated });
+                          }}
+                          style={inputStyle}
+                          onFocus={(e) => (e.target.style.borderColor = "#111")}
+                          onBlur={(e) =>
+                            (e.target.style.borderColor = "#e5e7eb")
+                          }
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Class *</label>
+                      <input
+                        placeholder="e.g. K1, Grade 2"
+                        value={child.class || ""}
+                        onChange={(e) => {
+                          const updated = [...form.children];
+                          updated[i] = { ...updated[i], class: e.target.value };
+                          setForm({ ...form, children: updated });
+                        }}
+                        style={inputStyle}
+                        onFocus={(e) => (e.target.style.borderColor = "#111")}
+                        onBlur={(e) => (e.target.style.borderColor = "#e5e7eb")}
+                      />
+                    </div>
+                  </div>
+                ))}
+                <button
+                  onClick={() =>
+                    setForm({
+                      ...form,
+                      children: [
+                        ...form.children,
+                        { firstName: "", lastName: "", class: "" },
+                      ],
+                    })
+                  }
+                  style={{
+                    width: "100%",
+                    fontSize: 13,
+                    color: "#1a5c47",
+                    background: "#f0fdf4",
+                    border: "1.5px dashed #86efac",
+                    borderRadius: 8,
+                    cursor: "pointer",
+                    fontWeight: 600,
+                    padding: "10px 16px",
+                    fontFamily: "var(--font-body)",
+                  }}
+                >
+                  + Add another child
+                </button>
+              </div>
+
               <button
-                onClick={() =>
-                  setForm({
-                    ...form,
-                    children: [...form.children, { name: "", class: "" }],
-                  })
-                }
+                onClick={handleRegister}
+                disabled={loginLoading}
                 style={{
-                  fontSize: 12,
-                  color: "var(--sky-dark)",
-                  background: "none",
+                  width: "100%",
+                  padding: "13px",
+                  background: loginLoading ? "#ccc" : "#111",
+                  color: "#fff",
                   border: "none",
-                  cursor: "pointer",
-                  fontWeight: 600,
-                  padding: 0,
-                }}
-              >
-                + Add another child
-              </button>
-            </div>
-            <Btn
-              onClick={handleRegister}
-              fullWidth
-              size="lg"
-              disabled={loginLoading}
-              style={{ marginTop: 4 }}
-            >
-              {loginLoading ? "Creating account…" : "Create Account"}
-            </Btn>
-            <p
-              style={{
-                textAlign: "center",
-                fontSize: 12,
-                color: "var(--text3)",
-              }}
-            >
-              Already registered?{" "}
-              <button
-                onClick={() => setIsReg(false)}
-                style={{
-                  background: "none",
-                  border: "none",
-                  color: "var(--sky-dark-bg)",
+                  borderRadius: 10,
+                  fontSize: 15,
                   fontWeight: 700,
-                  cursor: "pointer",
-                  fontSize: 12,
+                  cursor: loginLoading ? "not-allowed" : "pointer",
+                  marginTop: 4,
+                  fontFamily: "var(--font-body)",
                 }}
               >
-                Log in
+                {loginLoading ? "Creating account…" : "Create Account"}
               </button>
-            </p>
-          </div>
-        )}
+
+              <p style={{ textAlign: "center", fontSize: 13, color: "#888" }}>
+                Already registered?{" "}
+                <button
+                  onClick={() => setIsReg(false)}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "#1a5c47",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    fontSize: 13,
+                    fontFamily: "var(--font-body)",
+                  }}
+                >
+                  Sign in
+                </button>
+              </p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
