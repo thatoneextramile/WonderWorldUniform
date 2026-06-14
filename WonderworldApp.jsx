@@ -5009,7 +5009,7 @@ function ParentShell() {
                 cursor: "pointer",
               }}
             >
-              {isDesktop ? "Sign out" : "↩"}
+              Sign out
             </button>
           </div>
         </div>
