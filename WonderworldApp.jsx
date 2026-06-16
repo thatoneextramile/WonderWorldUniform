@@ -3257,8 +3257,11 @@ function ParentCart({ cartForm, setCartForm }) {
   const threshold = settings.discountThreshold;
   const childNameFilled = form.childName?.trim().length > 0;
   const discountRate = state.settings.discountRate || 0;
+  const discountEnabled = discountRate > 0;
   const appliedRate =
-    subtotal >= threshold && isFirstOrder && childNameFilled ? discountRate : 0;
+    discountEnabled && subtotal >= threshold && isFirstOrder && childNameFilled
+      ? discountRate
+      : 0;
   const discountAmount = subtotal * appliedRate;
   const total = subtotal - discountAmount;
   const discountPct = Math.round(discountRate * 100); // e.g. 0.15 → 15
@@ -3460,6 +3463,7 @@ function ParentCart({ cartForm, setCartForm }) {
     );
 
   const DiscountMsg = () => {
+    if (!discountEnabled) return null;
     if (subtotal >= threshold) {
       if (childNameFilled && isFirstOrder)
         return (
@@ -7229,6 +7233,20 @@ function AdminMasterControl() {
   }, []);
 
   async function saveSettings() {
+    // Validate Discount Rate format — must be a number between 0 and 1
+    const rateStr = String(settings.discountRate).trim();
+    const isValidRate =
+      rateStr !== "" && /^(0(\.\d+)?|1(\.0+)?)$/.test(rateStr);
+
+    if (!isValidRate) {
+      dispatch({
+        type: "SET_TOAST",
+        message:
+          "Discount Rate must be a number between 0 and 1 (e.g. 0, 0.15, 1).",
+      });
+      return;
+    }
+
     try {
       // Upload pending logo first if one was selected
       if (pendingLogo) {
@@ -7241,7 +7259,7 @@ function AdminMasterControl() {
       }
       const saved = await api("/api/admin/settings", {
         method: "PUT",
-        body: { ...settings },
+        body: { ...settings, discountRate: parseFloat(rateStr) },
       });
       dispatch({ type: "UPDATE_SETTINGS", settings: saved });
       dispatch({ type: "SET_TOAST", message: "Settings saved!" });
@@ -7292,17 +7310,25 @@ function AdminMasterControl() {
       });
     }
   }
-  async function deleteLoc(id) {
+  async function toggleLocationActive(id, currentlyActive) {
     try {
-      await api(`/api/admin/locations/${id}`, { method: "DELETE" });
-      const updated = locations.filter((l) => l.id !== id);
+      const updatedLoc = await api(`/api/admin/locations/${id}`, {
+        method: "PUT",
+        body: { isActive: !currentlyActive },
+      });
+      const updated = locations.map((l) => (l.id === id ? updatedLoc : l));
       setLocations(updated);
-      dispatch({ type: "DELETE_LOCATION", id });
-      dispatch({ type: "SET_TOAST", message: "Location removed" });
+      dispatch({ type: "UPDATE_LOCATION", location: updatedLoc });
+      dispatch({
+        type: "SET_TOAST",
+        message: currentlyActive
+          ? "Location deactivated"
+          : "Location activated",
+      });
     } catch (err) {
       dispatch({
         type: "SET_TOAST",
-        message: err.message || "Failed to remove location",
+        message: err.message || "Failed to update location",
       });
     }
   }
@@ -7492,8 +7518,26 @@ function AdminMasterControl() {
                   borderRadius: "var(--radius-sm)",
                 }}
               >
-                <span style={{ flex: 1, fontSize: 13, fontWeight: 600 }}>
+                <span
+                  style={{
+                    flex: 1,
+                    fontWeight: 700,
+                    color: l.isActive ? "var(--text)" : "var(--text3)",
+                  }}
+                >
                   {l.name}
+                  {!l.isActive && (
+                    <span
+                      style={{
+                        fontSize: 9,
+                        fontWeight: 700,
+                        color: "var(--text3)",
+                        marginLeft: 6,
+                      }}
+                    >
+                      (Inactive)
+                    </span>
+                  )}
                 </span>
                 {l.isDefault && (
                   <span
@@ -7529,24 +7573,26 @@ function AdminMasterControl() {
                 <button
                   onClick={() =>
                     setConfirmAction({
-                      message: `Remove location "${l.name}"?`,
-                      confirmLabel: "Remove",
-                      confirmVariant: "peach",
-                      onConfirm: () => deleteLoc(l.id),
+                      message: l.isActive
+                        ? `Deactivate location "${l.name}"? It will no longer be available for parents to select when placing orders.`
+                        : `Activate location "${l.name}"? It will become available for parents to select when placing orders.`,
+                      confirmLabel: l.isActive ? "Deactivate" : "Activate",
+                      confirmVariant: l.isActive ? "peach" : "sky",
+                      onConfirm: () => toggleLocationActive(l.id, l.isActive),
                     })
                   }
                   style={{
                     padding: "3px 9px",
                     border: "none",
                     borderRadius: 5,
-                    background: "var(--peach)",
-                    color: "var(--peach-dark)",
+                    background: l.isActive ? "var(--peach)" : "var(--sky)",
+                    color: l.isActive ? "var(--peach-dark)" : "var(--sky-dark)",
                     fontSize: 10,
                     fontWeight: 700,
                     cursor: "pointer",
                   }}
                 >
-                  Remove
+                  {l.isActive ? "Deactivate" : "Activate"}
                 </button>
               </div>
             ))}
@@ -7748,10 +7794,9 @@ function AdminMasterControl() {
                 onChange={(v) =>
                   setSettings({
                     ...settings,
-                    discountRate: parseFloat(v) || 0.15,
+                    discountRate: v,
                   })
                 }
-                type="number"
               />
               <Input
                 label="Minimum Stock Threshold (Orders will be blocked if available stock is at or below this number. Set to 0 to disable.)"
