@@ -4875,7 +4875,7 @@ function ParentShell() {
       >
         <div
           style={{
-            maxWidth: 1600,
+            maxWidth: 1920,
             margin: "0 auto",
             padding: isDesktop ? "0 48px" : "0 16px",
             height: 64,
@@ -5100,7 +5100,7 @@ function ParentShell() {
       <main
         style={{
           flex: 1,
-          maxWidth: 1600,
+          maxWidth: 1920,
           margin: "0 auto",
           width: "100%",
           padding: isDesktop ? "40px 48px" : "20px 16px 32px",
