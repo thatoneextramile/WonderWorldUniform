@@ -262,6 +262,11 @@ async function apiUpload(path, formData) {
   return res.json();
 }
 
+function displaySize(s) {
+  if (!s) return s;
+  return s.replace(/^T(\d+)$/, "$1T");
+}
+
 function sortSizes(sizes) {
   if (!sizes || !Array.isArray(sizes)) return [];
   return [...sizes].sort((a, b) => {
@@ -1407,6 +1412,7 @@ function ParentLogin() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [pass, setPass] = useState("");
+  const [showPass, setShowPass] = useState(false);
   const [isReg, setIsReg] = useState(false);
   const [form, setForm] = useState({
     firstName: "",
@@ -1423,18 +1429,12 @@ function ParentLogin() {
 
   async function handleLogin() {
     if (!email || !pass) {
-      dispatch({
-        type: "SET_TOAST",
-        message: "Please fill in email and password",
-      });
+      dispatch({ type: "SET_TOAST", message: "Please fill in email and password" });
       return;
     }
     setLoginLoading(true);
     try {
-      const data = await api("/api/auth/parent/login", {
-        method: "POST",
-        body: { email, password: pass },
-      });
+      const data = await api("/api/auth/parent/login", { method: "POST", body: { email, password: pass } });
       localStorage.setItem("ww_token", data.token);
       localStorage.setItem("ww_role", "parent");
       dispatch({ type: "LOGIN", user: data.parent, role: "parent" });
@@ -1444,10 +1444,7 @@ function ParentLogin() {
         navigate("/parent");
       }
     } catch (err) {
-      dispatch({
-        type: "SET_TOAST",
-        message: err.message || "Login failed. Check your email and password.",
-      });
+      dispatch({ type: "SET_TOAST", message: err.message || "Login failed. Check your email and password." });
     } finally {
       setLoginLoading(false);
     }
@@ -1455,10 +1452,7 @@ function ParentLogin() {
 
   async function handleRegister() {
     if (!form.firstName || !form.email || !form.password) {
-      dispatch({
-        type: "SET_TOAST",
-        message: "Please fill in all required fields",
-      });
+      dispatch({ type: "SET_TOAST", message: "Please fill in all required fields" });
       return;
     }
     if (form.password !== form.confirmPassword) {
@@ -1469,28 +1463,17 @@ function ParentLogin() {
       dispatch({ type: "SET_TOAST", message: "Please add at least one child" });
       return;
     }
-    if (
-      form.children.some((c) => !c.firstName?.trim() || !c.lastName?.trim())
-    ) {
-      dispatch({
-        type: "SET_TOAST",
-        message: "Please enter a name for each child",
-      });
+    if (form.children.some((c) => !c.firstName?.trim() || !c.lastName?.trim())) {
+      dispatch({ type: "SET_TOAST", message: "Please enter a name for each child" });
       return;
     }
     if (form.children.some((c) => !c.class?.trim())) {
-      dispatch({
-        type: "SET_TOAST",
-        message: "Please enter a class for each child",
-      });
+      dispatch({ type: "SET_TOAST", message: "Please enter a class for each child" });
       return;
     }
     setLoginLoading(true);
     try {
-      const data = await api("/api/auth/parent/register", {
-        method: "POST",
-        body: form,
-      });
+      const data = await api("/api/auth/parent/register", { method: "POST", body: form });
       localStorage.setItem("ww_token", data.token);
       localStorage.setItem("ww_role", "parent");
       dispatch({ type: "LOGIN", user: data.parent, role: "parent" });
@@ -1499,504 +1482,328 @@ function ParentLogin() {
         .catch(() => {});
       dispatch({ type: "SET_PARENT_PAGE", page: "home" });
     } catch (err) {
-      dispatch({
-        type: "SET_TOAST",
-        message:
-          err.message || "Registration failed. Email may already be in use.",
-      });
+      dispatch({ type: "SET_TOAST", message: err.message || "Registration failed. Email may already be in use." });
     } finally {
       setLoginLoading(false);
     }
   }
 
-  // Shared input style
-  const inputStyle = {
-    width: "100%",
-    padding: "12px 14px",
-    border: "1.5px solid #e5e7eb",
-    borderRadius: 8,
-    fontSize: 14,
-    outline: "none",
-    boxSizing: "border-box",
-    fontFamily: "var(--font-body)",
-    background: "#fff",
-    color: "#111",
+  // Shared styles matching the premium centered-card design
+  const cardInputWrap = {
+    display: "flex", alignItems: "center", gap: 10,
+    background: "#eef2f7", borderRadius: 10,
+    padding: "13px 16px", border: "1.5px solid transparent",
+    transition: "border-color .15s, background .15s",
   };
-  const labelStyle = {
-    fontSize: 12,
-    fontWeight: 600,
-    color: "#555",
-    marginBottom: 6,
-    display: "block",
+  const cardInput = {
+    flex: 1, border: "none", outline: "none", background: "none",
+    fontSize: 14, color: "#222", fontFamily: "var(--font-body)",
+  };
+  const labelStyle = { fontSize: 12, fontWeight: 600, color: "#555", marginBottom: 6, display: "block" };
+  const plainInput = {
+    width: "100%", padding: "12px 14px",
+    border: "1.5px solid #e5e7eb", borderRadius: 8,
+    fontSize: 14, outline: "none", boxSizing: "border-box",
+    fontFamily: "var(--font-body)", background: "#fff", color: "#111",
   };
 
   return (
-    <div style={{ minHeight: "100vh", display: "flex", background: "#fff" }}>
-      <div
-        style={{
-          flex: 1,
-          overflowY: "auto",
-          display: "flex",
-          alignItems: isReg ? "flex-start" : "center",
-          justifyContent: "center",
-          padding: isDesktop ? "48px 80px" : "32px 20px",
-          background: "#fff",
-          minHeight: "100vh",
-        }}
-      >
-        <div
-          className="animate-pop"
-          style={{ width: "100%", maxWidth: isReg ? 560 : 420 }}
-        >
-          {/* Header */}
-          <div style={{ marginBottom: 32 }}>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-                marginBottom: 20,
-              }}
-            >
-              {state.settings.logoUrl ? (
-                <img
-                  src={state.settings.logoUrl}
-                  alt="Logo"
-                  style={{
-                    width: 32,
-                    height: 32,
-                    objectFit: "contain",
-                    borderRadius: 8,
-                  }}
-                />
-              ) : (
-                <span style={{ fontSize: 24 }}>{state.settings.logoEmoji}</span>
-              )}
-              <span style={{ fontWeight: 800, fontSize: 16, color: "#111" }}>
-                {state.settings.systemName}
-              </span>
+    <div style={{
+      minHeight: "100vh",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      background: "linear-gradient(150deg, #d3e8de 0%, #e7e9ec 45%, #f3ede1 100%)",
+      padding: 24,
+    }}>
+      <div className="animate-pop" style={{
+        background: "#fff",
+        borderRadius: 20,
+        padding: isReg ? "40px 36px" : "44px 40px",
+        width: "100%",
+        maxWidth: isReg ? 480 : 440,
+        boxShadow: "0 24px 60px rgba(0,0,0,.12)",
+      }}>
+
+        {/* ── Logo + title ─────────────────────────────── */}
+        <div style={{ textAlign: "center", marginBottom: 28 }}>
+          <div style={{
+            width: 120, height: 64,
+            borderRadius: 10,
+            margin: "0 auto 18px",
+            overflow: "hidden",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>
+            {state.settings.logoUrl ? (
+              <img src={state.settings.logoUrl} alt="Logo"
+                style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+            ) : (
+              <span style={{ fontSize: 36 }}>{state.settings.logoEmoji}</span>
+            )}
+          </div>
+          <h1 style={{
+            fontSize: 24, fontWeight: 800,
+            color: "#5e9483", letterSpacing: "-.01em",
+            marginBottom: 6,
+          }}>
+            {state.settings.systemName}
+          </h1>
+          <p style={{ fontSize: 14, color: "#7a8389", margin: 0 }}>
+            {isReg ? "Create your parent account" : "Parent Portal"}
+          </p>
+        </div>
+
+        {/* ── Login form ───────────────────────────────── */}
+        {!isReg ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={cardInputWrap}>
+              <span style={{ fontSize: 16, color: "#8a96a3" }}>✉</span>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Email address"
+                style={cardInput}
+              />
             </div>
-            <h2
+            <div style={cardInputWrap}>
+              <span style={{ fontSize: 16, color: "#8a96a3" }}>🔒</span>
+              <input
+                type={showPass ? "text" : "password"}
+                value={pass}
+                onChange={(e) => setPass(e.target.value)}
+                placeholder="Password"
+                style={cardInput}
+              />
+              <button
+                onClick={() => setShowPass(!showPass)}
+                style={{ background: "none", border: "none", cursor: "pointer", fontSize: 15, color: "#8a96a3", padding: 0 }}
+                type="button"
+                aria-label="Toggle password visibility"
+              >
+                {showPass ? "🙈" : "👁"}
+              </button>
+            </div>
+
+            <button
+              onClick={handleLogin}
+              disabled={loginLoading}
               style={{
-                fontSize: isReg ? 24 : 28,
-                fontWeight: 800,
-                color: "#111",
-                letterSpacing: "-.02em",
-                margin: 0,
+                width: "100%", padding: "14px",
+                background: loginLoading ? "#a9c4ba" : "#6fa595",
+                color: "#fff", border: "none", borderRadius: 10,
+                fontSize: 15, fontWeight: 700,
+                cursor: loginLoading ? "not-allowed" : "pointer",
+                marginTop: 6,
+                fontFamily: "var(--font-body)",
+                transition: "background .15s",
+              }}
+              onMouseEnter={(e) => { if (!loginLoading) e.currentTarget.style.background = "#5e9483"; }}
+              onMouseLeave={(e) => { if (!loginLoading) e.currentTarget.style.background = "#6fa595"; }}
+            >
+              {loginLoading ? "Signing in…" : "Sign In"}
+            </button>
+
+            <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "6px 0" }}>
+              <div style={{ flex: 1, height: 1, background: "#e9ecef" }} />
+              <span style={{ fontSize: 12, color: "#aab2b9" }}>or</span>
+              <div style={{ flex: 1, height: 1, background: "#e9ecef" }} />
+            </div>
+
+            <button
+              onClick={() => setIsReg(true)}
+              style={{
+                width: "100%", padding: "13px",
+                background: "#fff", color: "#5e9483",
+                border: "1.5px solid #cfe2da", borderRadius: 10,
+                fontSize: 14, fontWeight: 700,
+                cursor: "pointer", fontFamily: "var(--font-body)",
               }}
             >
-              {isReg ? "Create your account" : "Welcome back"}
-            </h2>
-            <p style={{ fontSize: 14, color: "#888", marginTop: 8 }}>
-              {isReg
-                ? "Register to start ordering uniforms"
-                : "Sign in to your parent account"}
+              Create an account
+            </button>
+
+            <p style={{ fontSize: 12, color: "#9aa2a8", textAlign: "center", marginTop: 6 }}>
+              Forgot your password? Contact us at{" "}
+              <a href="mailto:info@wonderworldmontessori.ca"
+                style={{ color: "#5e9483", fontWeight: 600, textDecoration: "none" }}>
+                info@wonderworldmontessori.ca
+              </a>
             </p>
           </div>
 
-          {/* ── Login form ─────────────────────────────── */}
-          {!isReg ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        ) : (
+          /* ── Register form ─────────────────────────── */
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
               <div>
-                <label style={labelStyle}>Email address</label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="parent@email.com"
-                  style={inputStyle}
-                  onFocus={(e) => (e.target.style.borderColor = "#111")}
-                  onBlur={(e) => (e.target.style.borderColor = "#e5e7eb")}
+                <label style={labelStyle}>First Name *</label>
+                <input value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })}
+                  placeholder="Jane" style={plainInput}
+                  onFocus={(e) => e.target.style.borderColor = "#6fa595"}
+                  onBlur={(e) => e.target.style.borderColor = "#e5e7eb"}
                 />
               </div>
               <div>
-                <label style={labelStyle}>Password</label>
-                <input
-                  type="password"
-                  value={pass}
-                  onChange={(e) => setPass(e.target.value)}
-                  placeholder="••••••••"
-                  style={inputStyle}
-                  onFocus={(e) => (e.target.style.borderColor = "#111")}
-                  onBlur={(e) => (e.target.style.borderColor = "#e5e7eb")}
+                <label style={labelStyle}>Last Name</label>
+                <input value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })}
+                  placeholder="Smith" style={plainInput}
+                  onFocus={(e) => e.target.style.borderColor = "#6fa595"}
+                  onBlur={(e) => e.target.style.borderColor = "#e5e7eb"}
                 />
               </div>
-              <button
-                onClick={handleLogin}
-                disabled={loginLoading}
-                style={{
-                  width: "100%",
-                  padding: "13px",
-                  background: loginLoading ? "#ccc" : "#111",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: 10,
-                  fontSize: 15,
-                  fontWeight: 700,
-                  cursor: loginLoading ? "not-allowed" : "pointer",
-                  marginTop: 4,
-                  fontFamily: "var(--font-body)",
-                }}
-              >
-                {loginLoading ? "Signing in…" : "Sign In"}
-              </button>
-              <p
-                style={{
-                  fontSize: 11,
-                  color: "#888",
-                  textAlign: "center",
-                  marginTop: 4,
-                }}
-              >
-                Forgot your password? Contact us at{" "}
-                <a
-                  href="mailto:info@wonderworldmontessori.ca"
-                  style={{
-                    color: "#1a5c47",
-                    fontWeight: 600,
-                    textDecoration: "none",
-                  }}
-                >
-                  info@wonderworldmontessori.ca
-                </a>
-              </p>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 12,
-                  margin: "4px 0",
-                }}
-              >
-                <div style={{ flex: 1, height: 1, background: "#f3f4f6" }} />
-                <span style={{ fontSize: 12, color: "#aaa" }}>or</span>
-                <div style={{ flex: 1, height: 1, background: "#f3f4f6" }} />
-              </div>
-              <button
-                onClick={() => setIsReg(true)}
-                style={{
-                  width: "100%",
-                  padding: "12px",
-                  background: "#fff",
-                  color: "#111",
-                  border: "1.5px solid #e5e7eb",
-                  borderRadius: 10,
-                  fontSize: 14,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  fontFamily: "var(--font-body)",
-                }}
-              >
-                Create an account
-              </button>
             </div>
-          ) : (
-            /* ── Register form ───────────────────────── */
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              {/* Name row */}
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
-                  gap: 12,
-                }}
-              >
-                <div>
-                  <label style={labelStyle}>First Name *</label>
-                  <input
-                    value={form.firstName}
-                    onChange={(e) =>
-                      setForm({ ...form, firstName: e.target.value })
-                    }
-                    placeholder="Jane"
-                    style={inputStyle}
-                    onFocus={(e) => (e.target.style.borderColor = "#111")}
-                    onBlur={(e) => (e.target.style.borderColor = "#e5e7eb")}
-                  />
-                </div>
-                <div>
-                  <label style={labelStyle}>Last Name</label>
-                  <input
-                    value={form.lastName}
-                    onChange={(e) =>
-                      setForm({ ...form, lastName: e.target.value })
-                    }
-                    placeholder="Smith"
-                    style={inputStyle}
-                    onFocus={(e) => (e.target.style.borderColor = "#111")}
-                    onBlur={(e) => (e.target.style.borderColor = "#e5e7eb")}
-                  />
-                </div>
-              </div>
 
-              {/* Email */}
+            <div>
+              <label style={labelStyle}>Email address *</label>
+              <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })}
+                placeholder="parent@email.com" style={plainInput}
+                onFocus={(e) => e.target.style.borderColor = "#6fa595"}
+                onBlur={(e) => e.target.style.borderColor = "#e5e7eb"}
+              />
+            </div>
+
+            <div>
+              <label style={labelStyle}>Phone</label>
+              <input type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                placeholder="123-456-7890" style={plainInput}
+                onFocus={(e) => e.target.style.borderColor = "#6fa595"}
+                onBlur={(e) => e.target.style.borderColor = "#e5e7eb"}
+              />
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
               <div>
-                <label style={labelStyle}>Email address *</label>
-                <input
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  placeholder="parent@email.com"
-                  style={inputStyle}
-                  onFocus={(e) => (e.target.style.borderColor = "#111")}
-                  onBlur={(e) => (e.target.style.borderColor = "#e5e7eb")}
+                <label style={labelStyle}>Password *</label>
+                <input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })}
+                  placeholder="Create a password" style={plainInput}
+                  onFocus={(e) => e.target.style.borderColor = "#6fa595"}
+                  onBlur={(e) => e.target.style.borderColor = "#e5e7eb"}
                 />
               </div>
-
-              {/* Phone */}
               <div>
-                <label style={labelStyle}>Phone</label>
-                <input
-                  type="tel"
-                  value={form.phone}
-                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                  placeholder="123-456-7890"
-                  style={inputStyle}
-                  onFocus={(e) => (e.target.style.borderColor = "#111")}
-                  onBlur={(e) => (e.target.style.borderColor = "#e5e7eb")}
+                <label style={labelStyle}>Re-enter Password *</label>
+                <input type="password" value={form.confirmPassword} onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
+                  placeholder="••••••••" style={plainInput}
+                  onFocus={(e) => e.target.style.borderColor = "#6fa595"}
+                  onBlur={(e) => e.target.style.borderColor = "#e5e7eb"}
                 />
               </div>
+            </div>
 
-              {/* Password row */}
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
-                  gap: 12,
-                }}
-              >
-                <div>
-                  <label style={labelStyle}>Password *</label>
-                  <input
-                    type="password"
-                    value={form.password}
-                    onChange={(e) =>
-                      setForm({ ...form, password: e.target.value })
-                    }
-                    placeholder="Create a password"
-                    style={inputStyle}
-                    onFocus={(e) => (e.target.style.borderColor = "#111")}
-                    onBlur={(e) => (e.target.style.borderColor = "#e5e7eb")}
-                  />
-                </div>
-                <div>
-                  <label style={labelStyle}>Re-enter Password *</label>
-                  <input
-                    type="password"
-                    value={form.confirmPassword}
-                    onChange={(e) =>
-                      setForm({ ...form, confirmPassword: e.target.value })
-                    }
-                    placeholder="••••••••"
-                    style={inputStyle}
-                    onFocus={(e) => (e.target.style.borderColor = "#111")}
-                    onBlur={(e) => (e.target.style.borderColor = "#e5e7eb")}
-                  />
-                </div>
+            <div>
+              <div style={{ marginBottom: 12 }}>
+                <label style={{ ...labelStyle, fontSize: 13, color: "#111" }}>Children</label>
+                <span style={{ fontSize: 12, color: "#888" }}>At least one child is required</span>
               </div>
-
-              {/* Children */}
-              <div>
-                <div style={{ marginBottom: 12 }}>
-                  <label style={{ ...labelStyle, fontSize: 13, color: "#111" }}>
-                    Children
-                  </label>
-                  <span style={{ fontSize: 12, color: "#888" }}>
-                    At least one child is required
-                  </span>
-                </div>
-                {form.children.map((child, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      background: "#f9fafb",
-                      border: "1.5px solid #e5e7eb",
-                      borderRadius: 10,
-                      padding: "14px 16px",
-                      marginBottom: 10,
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        marginBottom: 10,
-                      }}
-                    >
-                      <span
-                        style={{
-                          fontSize: 12,
-                          fontWeight: 700,
-                          color: "#555",
-                          letterSpacing: ".04em",
-                          textTransform: "uppercase",
-                        }}
-                      >
-                        Child {form.children.length > 1 ? i + 1 : ""}
-                      </span>
-                      {form.children.length > 1 && (
-                        <button
-                          onClick={() =>
-                            setForm({
-                              ...form,
-                              children: form.children.filter((_, j) => j !== i),
-                            })
-                          }
-                          style={{
-                            background: "none",
-                            border: "none",
-                            color: "#f87171",
-                            cursor: "pointer",
-                            fontSize: 13,
-                            fontWeight: 600,
-                            padding: 0,
-                          }}
-                        >
-                          Remove
-                        </button>
-                      )}
-                    </div>
-                    <div
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns: isDesktop ? "1fr 1fr" : "1fr",
-                        gap: 10,
-                        marginBottom: 10,
-                      }}
-                    >
-                      <div>
-                        <label style={labelStyle}>First Name *</label>
-                        <input
-                          placeholder="Child's first name"
-                          value={child.firstName || ""}
-                          onChange={(e) => {
-                            const updated = [...form.children];
-                            updated[i] = {
-                              ...updated[i],
-                              firstName: e.target.value,
-                            };
-                            setForm({ ...form, children: updated });
-                          }}
-                          style={inputStyle}
-                          onFocus={(e) => (e.target.style.borderColor = "#111")}
-                          onBlur={(e) =>
-                            (e.target.style.borderColor = "#e5e7eb")
-                          }
-                        />
-                      </div>
-                      <div>
-                        <label style={labelStyle}>Last Name *</label>
-                        <input
-                          placeholder="Child's last name"
-                          value={child.lastName || ""}
-                          onChange={(e) => {
-                            const updated = [...form.children];
-                            updated[i] = {
-                              ...updated[i],
-                              lastName: e.target.value,
-                            };
-                            setForm({ ...form, children: updated });
-                          }}
-                          style={inputStyle}
-                          onFocus={(e) => (e.target.style.borderColor = "#111")}
-                          onBlur={(e) =>
-                            (e.target.style.borderColor = "#e5e7eb")
-                          }
-                        />
-                      </div>
-                    </div>
+              {form.children.map((child, i) => (
+                <div key={i} style={{
+                  background: "#f9fafb", border: "1.5px solid #e5e7eb",
+                  borderRadius: 10, padding: "14px 16px", marginBottom: 10,
+                }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: "#555", letterSpacing: ".04em", textTransform: "uppercase" }}>
+                      Child {form.children.length > 1 ? i + 1 : ""}
+                    </span>
+                    {form.children.length > 1 && (
+                      <button onClick={() => setForm({ ...form, children: form.children.filter((_, j) => j !== i) })}
+                        style={{ background: "none", border: "none", color: "#f87171", cursor: "pointer", fontSize: 13, fontWeight: 600, padding: 0 }}>
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: isDesktop ? "1fr 1fr" : "1fr", gap: 10, marginBottom: 10 }}>
                     <div>
-                      <label style={labelStyle}>Class *</label>
-                      <input
-                        placeholder="e.g. K1, Grade 2"
-                        value={child.class || ""}
+                      <label style={labelStyle}>First Name *</label>
+                      <input placeholder="Child's first name"
+                        value={child.firstName || ""}
                         onChange={(e) => {
                           const updated = [...form.children];
-                          updated[i] = { ...updated[i], class: e.target.value };
+                          updated[i] = { ...updated[i], firstName: e.target.value };
                           setForm({ ...form, children: updated });
                         }}
-                        style={inputStyle}
-                        onFocus={(e) => (e.target.style.borderColor = "#111")}
-                        onBlur={(e) => (e.target.style.borderColor = "#e5e7eb")}
+                        style={plainInput}
+                        onFocus={(e) => e.target.style.borderColor = "#6fa595"}
+                        onBlur={(e) => e.target.style.borderColor = "#e5e7eb"}
+                      />
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Last Name *</label>
+                      <input placeholder="Child's last name"
+                        value={child.lastName || ""}
+                        onChange={(e) => {
+                          const updated = [...form.children];
+                          updated[i] = { ...updated[i], lastName: e.target.value };
+                          setForm({ ...form, children: updated });
+                        }}
+                        style={plainInput}
+                        onFocus={(e) => e.target.style.borderColor = "#6fa595"}
+                        onBlur={(e) => e.target.style.borderColor = "#e5e7eb"}
                       />
                     </div>
                   </div>
-                ))}
-                <button
-                  onClick={() =>
-                    setForm({
-                      ...form,
-                      children: [
-                        ...form.children,
-                        { firstName: "", lastName: "", class: "" },
-                      ],
-                    })
-                  }
-                  style={{
-                    width: "100%",
-                    fontSize: 13,
-                    color: "#1a5c47",
-                    background: "#f0fdf4",
-                    border: "1.5px dashed #86efac",
-                    borderRadius: 8,
-                    cursor: "pointer",
-                    fontWeight: 600,
-                    padding: "10px 16px",
-                    fontFamily: "var(--font-body)",
-                  }}
-                >
-                  + Add another child
-                </button>
-              </div>
-
+                  <div>
+                    <label style={labelStyle}>Class *</label>
+                    <input placeholder="e.g. K1, Grade 2"
+                      value={child.class || ""}
+                      onChange={(e) => {
+                        const updated = [...form.children];
+                        updated[i] = { ...updated[i], class: e.target.value };
+                        setForm({ ...form, children: updated });
+                      }}
+                      style={plainInput}
+                      onFocus={(e) => e.target.style.borderColor = "#6fa595"}
+                      onBlur={(e) => e.target.style.borderColor = "#e5e7eb"}
+                    />
+                  </div>
+                </div>
+              ))}
               <button
-                onClick={handleRegister}
-                disabled={loginLoading}
+                onClick={() => setForm({ ...form, children: [...form.children, { firstName: "", lastName: "", class: "" }] })}
                 style={{
-                  width: "100%",
-                  padding: "13px",
-                  background: loginLoading ? "#ccc" : "#111",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: 10,
-                  fontSize: 15,
-                  fontWeight: 700,
-                  cursor: loginLoading ? "not-allowed" : "pointer",
-                  marginTop: 4,
-                  fontFamily: "var(--font-body)",
+                  width: "100%", fontSize: 13, color: "#5e9483",
+                  background: "#eef6f2", border: "1.5px dashed #b9d9cb",
+                  borderRadius: 8, cursor: "pointer", fontWeight: 600,
+                  padding: "10px 16px", fontFamily: "var(--font-body)",
                 }}
               >
-                {loginLoading ? "Creating account…" : "Create Account"}
+                + Add another child
               </button>
-
-              <p style={{ textAlign: "center", fontSize: 13, color: "#888" }}>
-                Already registered?{" "}
-                <button
-                  onClick={() => setIsReg(false)}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    color: "#1a5c47",
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    fontSize: 13,
-                    fontFamily: "var(--font-body)",
-                  }}
-                >
-                  Sign in
-                </button>
-              </p>
             </div>
-          )}
-        </div>
+
+            <button
+              onClick={handleRegister}
+              disabled={loginLoading}
+              style={{
+                width: "100%", padding: "14px",
+                background: loginLoading ? "#a9c4ba" : "#6fa595",
+                color: "#fff", border: "none", borderRadius: 10,
+                fontSize: 15, fontWeight: 700,
+                cursor: loginLoading ? "not-allowed" : "pointer",
+                marginTop: 4, fontFamily: "var(--font-body)",
+                transition: "background .15s",
+              }}
+              onMouseEnter={(e) => { if (!loginLoading) e.currentTarget.style.background = "#5e9483"; }}
+              onMouseLeave={(e) => { if (!loginLoading) e.currentTarget.style.background = "#6fa595"; }}
+            >
+              {loginLoading ? "Creating account…" : "Create Account"}
+            </button>
+
+            <p style={{ textAlign: "center", fontSize: 13, color: "#888" }}>
+              Already registered?{" "}
+              <button
+                onClick={() => setIsReg(false)}
+                style={{ background: "none", border: "none", color: "#5e9483", fontWeight: 700, cursor: "pointer", fontSize: 13, fontFamily: "var(--font-body)" }}
+              >
+                Sign in
+              </button>
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
 }
-
-// ─── PRODUCT IMAGE GALLERY (shared parent/admin) ──────────────
-// Shows a scrollable carousel if images[] exist, else shows emoji fallback.
 function ProductImageGallery({
   images = [],
   imageEmoji = "👕",
@@ -2483,6 +2290,7 @@ function ParentHome() {
     "Outdoor Wear",
     "All Items",
   ];
+  const [modalAlert, setModalAlert] = useState("");
   const windowWidth = useWindowWidth();
   const isDesktop = windowWidth >= 1024;
   useEffect(() => {
@@ -2510,16 +2318,29 @@ function ParentHome() {
   );
   const orderStockThreshold = state.settings.orderStockThreshold ?? 0;
 
+  // Set of "productId-size" keys that are blocked
+  const unavailableKeys = new Set(
+    orderStockThreshold > 0
+      ? Object.entries(stockMap)
+          .filter(([, available]) => available <= orderStockThreshold)
+          .map(([key]) => key)
+      : [],
+  );
+
+  function isProductFullyUnavailable(p) {
+    if (orderStockThreshold === 0) return false;
+    return sortSizes(p.sizes).every((s) => unavailableKeys.has(`${p.id}-${s}`));
+  }
+
   function handleAddToCart() {
     // ── Minimum Order Stock check ──
     if (orderStockThreshold > 0) {
       const available = stockMap[`${selectedProduct.id}-${addSize}`];
       // 1. Minimum stock threshold check — block if at or below threshold
       if (orderStockThreshold > 0 && available <= orderStockThreshold) {
-        dispatch({
-          type: "SET_TOAST",
-          message: `Sorry, ${selectedProduct.name} (${addSize}) is currently unavailable for ordering.`,
-        });
+        setModalAlert(
+          `${displaySize(addSize)} is currently unavailable for ordering.`,
+        );
         return;
       }
 
@@ -2534,15 +2355,15 @@ function ParentHome() {
       // Block if total requested (cart + new) exceeds available stock
       if (available !== undefined && totalRequested > available) {
         const remaining = Math.max(0, available - alreadyInCart);
-        dispatch({
-          type: "SET_TOAST",
-          message:
-            available === 0
-              ? `${selectedProduct.name} (${addSize}) is out of stock.`
-              : alreadyInCart >= available
-                ? `You already have all available stock (${available}) in your cart for ${selectedProduct.name} (${addSize}).`
-                : `Only ${remaining} more available for ${selectedProduct.name} (${addSize}). You already have ${alreadyInCart} in your cart.`,
-        });
+        setModalAlert(
+          available === 0
+            ? `${displaySize(addSize)} is out of stock.`
+            : alreadyInCart >= available
+              ? `You already have all ${available} available for ${displaySize(addSize)} in your cart.`
+              : alreadyInCart === 0
+                ? `Only ${remaining} available for ${displaySize(addSize)}.`
+                : `Only ${remaining} more available for ${displaySize(addSize)} — you already have ${alreadyInCart} in your cart.`,
+        );
         return;
       }
     }
@@ -2653,7 +2474,129 @@ function ParentHome() {
           gap: isDesktop ? 28 : 14,
         }}
       >
-        {filtered.map((p) => (
+        {filtered.map((p) => {
+          const fullyUnavailable = isProductFullyUnavailable(p);
+          return (
+            <div
+              key={p.id}
+              onClick={() => {
+                setSelectedProduct(p);
+                setAddSize("");
+                setAddQty(1);
+              }}
+              style={{
+                cursor: fullyUnavailable ? "not-allowed" : "pointer",
+                background: "#fff",
+                opacity: fullyUnavailable ? 0.45 : 1,
+                position: "relative",
+              }}
+              onMouseEnter={(e) => {
+                if (!fullyUnavailable)
+                  e.currentTarget.querySelector(
+                    ".pp-img-wrap",
+                  ).style.transform = "scale(1.03)";
+              }}
+              onMouseLeave={(e) => {
+                if (!fullyUnavailable)
+                  e.currentTarget.querySelector(
+                    ".pp-img-wrap",
+                  ).style.transform = "scale(1)";
+              }}
+            >
+              {fullyUnavailable && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: 10,
+                    left: 10,
+                    zIndex: 2,
+                    background: "#111",
+                    color: "#fff",
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: ".06em",
+                    padding: "4px 10px",
+                    borderRadius: 20,
+                    textTransform: "uppercase",
+                  }}
+                >
+                  Unavailable
+                </div>
+              )}
+              {/* Image */}
+              <div
+                style={{
+                  aspectRatio: "3/4",
+                  overflow: "hidden",
+                  borderRadius: 10,
+                  background: "#f3f4f6",
+                  marginBottom: 12,
+                }}
+              >
+                <div
+                  className="pp-img-wrap"
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    transition: "transform .4s ease",
+                  }}
+                >
+                  <ProductImageGallery
+                    images={p.images}
+                    imageEmoji={p.imageEmoji}
+                    imageBg={p.imageBg}
+                    height="100%"
+                    showThumbs={false}
+                  />
+                </div>
+              </div>
+
+              {/* Info */}
+              <div>
+                <div
+                  style={{
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: "#111",
+                    marginBottom: 3,
+                    lineHeight: 1.3,
+                  }}
+                >
+                  {p.name}
+                </div>
+                <div
+                  style={{
+                    fontSize: 15,
+                    fontWeight: 700,
+                    color: "#111",
+                    marginBottom: 8,
+                  }}
+                >
+                  ${p.sellingPrice.toFixed(2)}
+                </div>
+                <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                  {sortSizes(p.sizes).map((s) => (
+                    <span
+                      key={s}
+                      style={{
+                        padding: "3px 7px",
+                        border: "1px solid #e5e7eb",
+                        borderRadius: 4,
+                        fontSize: 10,
+                        fontWeight: 600,
+                        color: "#888",
+                        background: "#fafafa",
+                      }}
+                    >
+                      {displaySize(s)}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+        {/* {filtered.map((p) => (
           <div
             key={p.id}
             onClick={() => {
@@ -2671,7 +2614,6 @@ function ParentHome() {
                 "scale(1)")
             }
           >
-            {/* Image */}
             <div
               style={{
                 aspectRatio: "3/4",
@@ -2699,7 +2641,6 @@ function ParentHome() {
               </div>
             </div>
 
-            {/* Info */}
             <div>
               <div
                 style={{
@@ -2736,13 +2677,13 @@ function ParentHome() {
                       background: "#fafafa",
                     }}
                   >
-                    {s}
+                    {displaySize(s)}
                   </span>
                 ))}
               </div>
             </div>
           </div>
-        ))}
+        ))} */}
       </div>
 
       {filtered.length === 0 && (
@@ -2774,7 +2715,10 @@ function ParentHome() {
               padding: "40px 16px",
               overflowY: "auto",
             }}
-            onClick={() => setSelectedProduct(null)}
+            onClick={() => {
+              setSelectedProduct(null);
+              setModalAlert("");
+            }}
           >
             <div
               onClick={(e) => e.stopPropagation()}
@@ -2823,7 +2767,10 @@ function ParentHome() {
               >
                 {/* Close */}
                 <button
-                  onClick={() => setSelectedProduct(null)}
+                  onClick={() => {
+                    setSelectedProduct(null);
+                    setModalAlert("");
+                  }}
                   style={{
                     alignSelf: "flex-end",
                     background: "none",
@@ -2885,15 +2832,54 @@ function ParentHome() {
                           letterSpacing: 0,
                         }}
                       >
-                        — {addSize} (Age {addSize.replace("T", "")})
+                        — {displaySize(displaySize(addSize))}
                       </span>
                     )}
                   </div>
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    {sortSizes(selectedProduct?.sizes).map((s) => (
+                    {sortSizes(selectedProduct?.sizes).map((s) => {
+                      const sizeUnavailable =
+                        orderStockThreshold > 0 &&
+                        unavailableKeys.has(`${selectedProduct.id}-${s}`);
+                      return (
+                        <button
+                          key={s}
+                          onClick={() => {
+                            if (!sizeUnavailable) setAddSize(s);
+                          }}
+                          disabled={sizeUnavailable}
+                          style={{
+                            padding: "10px 16px",
+                            borderRadius: 8,
+                            fontWeight: 700,
+                            fontSize: 13,
+                            cursor: sizeUnavailable ? "not-allowed" : "pointer",
+                            border: `2px solid ${addSize === s ? "#111" : "#e5e7eb"}`,
+                            background: sizeUnavailable
+                              ? "#f3f4f6"
+                              : addSize === s
+                                ? "#111"
+                                : "#fff",
+                            color: sizeUnavailable
+                              ? "#bbb"
+                              : addSize === s
+                                ? "#fff"
+                                : "#555",
+                            transition: "all .15s",
+                            minWidth: 52,
+                            textDecoration: sizeUnavailable
+                              ? "line-through"
+                              : "none",
+                          }}
+                        >
+                          {displaySize(s)}
+                        </button>
+                      );
+                    })}
+                    {/* {sortSizes(selectedProduct?.sizes).map((s) => (
                       <button
                         key={s}
-                        onClick={() => setAddSize(s)}
+                        onClick={() => { setAddSize(s); setModalAlert(""); }}
                         style={{
                           padding: "10px 16px",
                           borderRadius: 8,
@@ -2907,9 +2893,9 @@ function ParentHome() {
                           minWidth: 52,
                         }}
                       >
-                        {s}
+                        {displaySize(s)}
                       </button>
-                    ))}
+                    ))} */}
                   </div>
                 </div>
 
@@ -2936,7 +2922,10 @@ function ParentHome() {
                     }}
                   >
                     <button
-                      onClick={() => setAddQty(Math.max(1, addQty - 1))}
+                      onClick={() => {
+                        setAddQty(Math.max(1, addQty - 1));
+                        setModalAlert("");
+                      }}
                       style={{
                         width: 38,
                         height: 38,
@@ -2961,7 +2950,10 @@ function ParentHome() {
                       {addQty}
                     </span>
                     <button
-                      onClick={() => setAddQty(addQty + 1)}
+                      onClick={() => {
+                        setAddQty(addQty + 1);
+                        setModalAlert("");
+                      }}
                       style={{
                         width: 38,
                         height: 38,
@@ -2987,6 +2979,38 @@ function ParentHome() {
                     ${(selectedProduct.sellingPrice * addQty).toFixed(2)}
                   </span>
                 </div>
+
+                {/* Stock alert */}
+                {modalAlert && (
+                  <div
+                    style={{
+                      background: "#fef2f2",
+                      border: "1.5px solid #fca5a5",
+                      borderRadius: 8,
+                      padding: "12px 16px",
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: 10,
+                    }}
+                  >
+                    <span style={{ fontSize: 18, flexShrink: 0 }}>⚠️</span>
+                    <div>
+                      <div
+                        style={{
+                          fontSize: 13,
+                          fontWeight: 700,
+                          color: "#dc2626",
+                          marginBottom: 2,
+                        }}
+                      >
+                        Unable to add to cart
+                      </div>
+                      <div style={{ fontSize: 13, color: "#7f1d1d" }}>
+                        {modalAlert}
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* CTA */}
                 <button
@@ -3035,8 +3059,11 @@ function ParentCart({ cartForm, setCartForm }) {
   const threshold = settings.discountThreshold;
   const childNameFilled = form.childName?.trim().length > 0;
   const discountRate = state.settings.discountRate || 0;
+  const discountEnabled = discountRate > 0;
   const appliedRate =
-    subtotal >= threshold && isFirstOrder && childNameFilled ? discountRate : 0;
+    discountEnabled && subtotal >= threshold && isFirstOrder && childNameFilled
+      ? discountRate
+      : 0;
   const discountAmount = subtotal * appliedRate;
   const total = subtotal - discountAmount;
   const discountPct = Math.round(discountRate * 100); // e.g. 0.15 → 15
@@ -3093,6 +3120,20 @@ function ParentCart({ cartForm, setCartForm }) {
     if (cart.length === 0) {
       dispatch({ type: "SET_TOAST", message: "Your cart is empty" });
       return;
+    }
+    for (const item of cart) {
+      const key = `${item.productId}-${item.size}`;
+      const available = stockMap[key];
+      if (available !== undefined && item.quantity > available) {
+        dispatch({
+          type: "SET_TOAST",
+          message:
+            available === 0
+              ? `${item.productName} (${displaySize(item.size)}) is out of stock.`
+              : `Only ${available} available for ${item.productName} (${displaySize(item.size)}), but you have ${item.quantity} in your cart.`,
+        });
+        return;
+      }
     }
     setSubmitting(true);
     const child = state.children.find(
@@ -3224,6 +3265,7 @@ function ParentCart({ cartForm, setCartForm }) {
     );
 
   const DiscountMsg = () => {
+    if (!discountEnabled) return null;
     if (subtotal >= threshold) {
       if (childNameFilled && isFirstOrder)
         return (
@@ -3362,7 +3404,7 @@ function ParentCart({ cartForm, setCartForm }) {
                     {item.productName}
                   </div>
                   <div style={{ fontSize: 11, color: "var(--text3)" }}>
-                    Size {item.size} · Age {item.size.replace("T", "")}
+                    Size {displaySize(displaySize(item.size))}
                   </div>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -3421,7 +3463,7 @@ function ParentCart({ cartForm, setCartForm }) {
                         // Show warning under this item, don't increment
                         setStockWarnings((w) => ({
                           ...w,
-                          [key]: `Only ${available} available for ${item.productName} (${item.size})`,
+                          [key]: `Only ${available} available for ${item.productName} (${displaySize(item.size)})`,
                         }));
                         return;
                       }
@@ -3950,7 +3992,10 @@ function ParentOrders() {
               style={{ fontSize: 12, color: "var(--text3)", marginBottom: 6 }}
             >
               {o.items
-                .map((i) => `${i.productName} ${i.size} ×${i.quantity}`)
+                .map(
+                  (i) =>
+                    `${i.productName} ${displaySize(i.size)} ×${i.quantity}`,
+                )
                 .join(", ")}
             </div>
             <div
@@ -4056,7 +4101,7 @@ function ParentOrders() {
                 }}
               >
                 <span>
-                  {item.productName} ({item.size}) ×{item.quantity}
+                  {item.productName} ({displaySize(item.size)}) ×{item.quantity}
                 </span>
                 <span style={{ fontWeight: 700 }}>
                   ${(Number(item.unitPrice) * item.quantity).toFixed(2)}
@@ -4770,7 +4815,7 @@ function ParentShell() {
                 cursor: "pointer",
               }}
             >
-              {isDesktop ? "Sign out" : "↩"}
+              Sign out
             </button>
           </div>
         </div>
@@ -5389,7 +5434,7 @@ function AdminProducts() {
                           padding: "2px 5px",
                         }}
                       >
-                        {s}
+                        {displaySize(s)}
                       </span>
                     ))}
                   </div>
@@ -5621,10 +5666,7 @@ function AdminProducts() {
                         : "var(--text2)",
                     }}
                   >
-                    {s}{" "}
-                    <span style={{ fontSize: 10, opacity: 0.7 }}>
-                      Age {s.replace("T", "")}
-                    </span>
+                    {displaySize(s)}
                   </span>
                 </label>
               ))}
@@ -5942,7 +5984,7 @@ function AdminInventory() {
                         borderRight: "1px solid var(--border)",
                       }}
                     >
-                      {size}
+                      {displaySize(size)}
                     </th>
                   ))}
                 </tr>
@@ -6867,7 +6909,7 @@ function AdminOrders() {
                 }}
               >
                 <span>
-                  {it.productName} ({it.size}) ×{it.quantity}
+                  {it.productName} ({displaySize(it.size)}) ×{it.quantity}
                 </span>
                 <span style={{ fontWeight: 700 }}>
                   ${(it.unitPrice * it.quantity).toFixed(2)}
@@ -6993,6 +7035,20 @@ function AdminMasterControl() {
   }, []);
 
   async function saveSettings() {
+    // Validate Discount Rate format — must be a number between 0 and 1
+    const rateStr = String(settings.discountRate).trim();
+    const isValidRate =
+      rateStr !== "" && /^(0(\.\d+)?|1(\.0+)?)$/.test(rateStr);
+
+    if (!isValidRate) {
+      dispatch({
+        type: "SET_TOAST",
+        message:
+          "Discount Rate must be a number between 0 and 1 (e.g. 0, 0.15, 1).",
+      });
+      return;
+    }
+
     try {
       // Upload pending logo first if one was selected
       if (pendingLogo) {
@@ -7005,7 +7061,7 @@ function AdminMasterControl() {
       }
       const saved = await api("/api/admin/settings", {
         method: "PUT",
-        body: { ...settings },
+        body: { ...settings, discountRate: parseFloat(rateStr) },
       });
       dispatch({ type: "UPDATE_SETTINGS", settings: saved });
       dispatch({ type: "SET_TOAST", message: "Settings saved!" });
@@ -7056,17 +7112,25 @@ function AdminMasterControl() {
       });
     }
   }
-  async function deleteLoc(id) {
+  async function toggleLocationActive(id, currentlyActive) {
     try {
-      await api(`/api/admin/locations/${id}`, { method: "DELETE" });
-      const updated = locations.filter((l) => l.id !== id);
+      const updatedLoc = await api(`/api/admin/locations/${id}`, {
+        method: "PUT",
+        body: { isActive: !currentlyActive },
+      });
+      const updated = locations.map((l) => (l.id === id ? updatedLoc : l));
       setLocations(updated);
-      dispatch({ type: "DELETE_LOCATION", id });
-      dispatch({ type: "SET_TOAST", message: "Location removed" });
+      dispatch({ type: "UPDATE_LOCATION", location: updatedLoc });
+      dispatch({
+        type: "SET_TOAST",
+        message: currentlyActive
+          ? "Location deactivated"
+          : "Location activated",
+      });
     } catch (err) {
       dispatch({
         type: "SET_TOAST",
-        message: err.message || "Failed to remove location",
+        message: err.message || "Failed to update location",
       });
     }
   }
@@ -7256,8 +7320,26 @@ function AdminMasterControl() {
                   borderRadius: "var(--radius-sm)",
                 }}
               >
-                <span style={{ flex: 1, fontSize: 13, fontWeight: 600 }}>
+                <span
+                  style={{
+                    flex: 1,
+                    fontWeight: 700,
+                    color: l.isActive ? "var(--text)" : "var(--text3)",
+                  }}
+                >
                   {l.name}
+                  {!l.isActive && (
+                    <span
+                      style={{
+                        fontSize: 9,
+                        fontWeight: 700,
+                        color: "var(--text3)",
+                        marginLeft: 6,
+                      }}
+                    >
+                      (Inactive)
+                    </span>
+                  )}
                 </span>
                 {l.isDefault && (
                   <span
@@ -7293,24 +7375,26 @@ function AdminMasterControl() {
                 <button
                   onClick={() =>
                     setConfirmAction({
-                      message: `Remove location "${l.name}"?`,
-                      confirmLabel: "Remove",
-                      confirmVariant: "peach",
-                      onConfirm: () => deleteLoc(l.id),
+                      message: l.isActive
+                        ? `Deactivate location "${l.name}"? It will no longer be available for parents to select when placing orders.`
+                        : `Activate location "${l.name}"? It will become available for parents to select when placing orders.`,
+                      confirmLabel: l.isActive ? "Deactivate" : "Activate",
+                      confirmVariant: l.isActive ? "peach" : "sky",
+                      onConfirm: () => toggleLocationActive(l.id, l.isActive),
                     })
                   }
                   style={{
                     padding: "3px 9px",
                     border: "none",
                     borderRadius: 5,
-                    background: "var(--peach)",
-                    color: "var(--peach-dark)",
+                    background: l.isActive ? "var(--peach)" : "var(--sky)",
+                    color: l.isActive ? "var(--peach-dark)" : "var(--sky-dark)",
                     fontSize: 10,
                     fontWeight: 700,
                     cursor: "pointer",
                   }}
                 >
-                  Remove
+                  {l.isActive ? "Deactivate" : "Activate"}
                 </button>
               </div>
             ))}
@@ -7512,10 +7596,9 @@ function AdminMasterControl() {
                 onChange={(v) =>
                   setSettings({
                     ...settings,
-                    discountRate: parseFloat(v) || 0.15,
+                    discountRate: v,
                   })
                 }
-                type="number"
               />
               <Input
                 label="Minimum Stock Threshold (Orders will be blocked if available stock is at or below this number. Set to 0 to disable.)"

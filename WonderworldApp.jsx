@@ -1412,6 +1412,7 @@ function ParentLogin() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [pass, setPass] = useState("");
+  const [showPass, setShowPass] = useState(false);
   const [isReg, setIsReg] = useState(false);
   const [form, setForm] = useState({
     firstName: "",
@@ -1514,8 +1515,34 @@ function ParentLogin() {
     }
   }
 
-  // Shared input style
-  const inputStyle = {
+  // Shared styles matching the premium centered-card design
+  const cardInputWrap = {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    background: "#eef2f7",
+    borderRadius: 10,
+    padding: "13px 16px",
+    border: "1.5px solid transparent",
+    transition: "border-color .15s, background .15s",
+  };
+  const cardInput = {
+    flex: 1,
+    border: "none",
+    outline: "none",
+    background: "none",
+    fontSize: 14,
+    color: "#222",
+    fontFamily: "var(--font-body)",
+  };
+  const labelStyle = {
+    fontSize: 12,
+    fontWeight: 600,
+    color: "#555",
+    marginBottom: 6,
+    display: "block",
+  };
+  const plainInput = {
     width: "100%",
     padding: "12px 14px",
     border: "1.5px solid #e5e7eb",
@@ -1527,481 +1554,493 @@ function ParentLogin() {
     background: "#fff",
     color: "#111",
   };
-  const labelStyle = {
-    fontSize: 12,
-    fontWeight: 600,
-    color: "#555",
-    marginBottom: 6,
-    display: "block",
-  };
 
   return (
-    <div style={{ minHeight: "100vh", display: "flex", background: "#fff" }}>
+    <div
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background:
+          "linear-gradient(150deg, #d3e8de 0%, #e7e9ec 45%, #f3ede1 100%)",
+        padding: 24,
+      }}
+    >
       <div
+        className="animate-pop"
         style={{
-          flex: 1,
-          overflowY: "auto",
-          display: "flex",
-          alignItems: isReg ? "flex-start" : "center",
-          justifyContent: "center",
-          padding: isDesktop ? "48px 80px" : "32px 20px",
           background: "#fff",
-          minHeight: "100vh",
+          borderRadius: 20,
+          padding: isReg ? "40px 36px" : "44px 40px",
+          width: "100%",
+          maxWidth: isReg ? 480 : 440,
+          boxShadow: "0 24px 60px rgba(0,0,0,.12)",
         }}
       >
-        <div
-          className="animate-pop"
-          style={{ width: "100%", maxWidth: isReg ? 560 : 420 }}
-        >
-          {/* Header */}
-          <div style={{ marginBottom: 32 }}>
+        {/* ── Logo + title ─────────────────────────────── */}
+        <div style={{ textAlign: "center", marginBottom: 28 }}>
+          <div
+            style={{
+              width: 120,
+              height: 64,
+              borderRadius: 10,
+              margin: "0 auto 18px",
+              overflow: "hidden",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            {state.settings.logoUrl ? (
+              <img
+                src={state.settings.logoUrl}
+                alt="Logo"
+                style={{ width: "100%", height: "100%", objectFit: "contain" }}
+              />
+            ) : (
+              <span style={{ fontSize: 36 }}>{state.settings.logoEmoji}</span>
+            )}
+          </div>
+          <h1
+            style={{
+              fontSize: 24,
+              fontWeight: 800,
+              color: "#5e9483",
+              letterSpacing: "-.01em",
+              marginBottom: 6,
+            }}
+          >
+            {state.settings.systemName}
+          </h1>
+          <p style={{ fontSize: 14, color: "#7a8389", margin: 0 }}>
+            {isReg ? "Create your parent account" : "Parent Portal"}
+          </p>
+        </div>
+
+        {/* ── Login form ───────────────────────────────── */}
+        {!isReg ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={cardInputWrap}>
+              <span style={{ fontSize: 16, color: "#8a96a3" }}>✉</span>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Email address"
+                style={cardInput}
+              />
+            </div>
+            <div style={cardInputWrap}>
+              <span style={{ fontSize: 16, color: "#8a96a3" }}>🔒</span>
+              <input
+                type={showPass ? "text" : "password"}
+                value={pass}
+                onChange={(e) => setPass(e.target.value)}
+                placeholder="Password"
+                style={cardInput}
+              />
+              <button
+                onClick={() => setShowPass(!showPass)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  fontSize: 15,
+                  color: "#8a96a3",
+                  padding: 0,
+                }}
+                type="button"
+                aria-label="Toggle password visibility"
+              >
+                {showPass ? "🙈" : "👁"}
+              </button>
+            </div>
+
+            <button
+              onClick={handleLogin}
+              disabled={loginLoading}
+              style={{
+                width: "100%",
+                padding: "14px",
+                background: loginLoading ? "#a9c4ba" : "#6fa595",
+                color: "#fff",
+                border: "none",
+                borderRadius: 10,
+                fontSize: 15,
+                fontWeight: 700,
+                cursor: loginLoading ? "not-allowed" : "pointer",
+                marginTop: 6,
+                fontFamily: "var(--font-body)",
+                transition: "background .15s",
+              }}
+              onMouseEnter={(e) => {
+                if (!loginLoading) e.currentTarget.style.background = "#5e9483";
+              }}
+              onMouseLeave={(e) => {
+                if (!loginLoading) e.currentTarget.style.background = "#6fa595";
+              }}
+            >
+              {loginLoading ? "Signing in…" : "Sign In"}
+            </button>
+
             <div
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: 10,
-                marginBottom: 20,
+                gap: 12,
+                margin: "6px 0",
               }}
             >
-              {state.settings.logoUrl ? (
-                <img
-                  src={state.settings.logoUrl}
-                  alt="Logo"
-                  style={{
-                    width: 32,
-                    height: 32,
-                    objectFit: "contain",
-                    borderRadius: 8,
-                  }}
-                />
-              ) : (
-                <span style={{ fontSize: 24 }}>{state.settings.logoEmoji}</span>
-              )}
-              <span style={{ fontWeight: 800, fontSize: 16, color: "#111" }}>
-                {state.settings.systemName}
-              </span>
+              <div style={{ flex: 1, height: 1, background: "#e9ecef" }} />
+              <span style={{ fontSize: 12, color: "#aab2b9" }}>or</span>
+              <div style={{ flex: 1, height: 1, background: "#e9ecef" }} />
             </div>
-            <h2
+
+            <button
+              onClick={() => setIsReg(true)}
               style={{
-                fontSize: isReg ? 24 : 28,
-                fontWeight: 800,
-                color: "#111",
-                letterSpacing: "-.02em",
-                margin: 0,
+                width: "100%",
+                padding: "13px",
+                background: "#fff",
+                color: "#5e9483",
+                border: "1.5px solid #cfe2da",
+                borderRadius: 10,
+                fontSize: 14,
+                fontWeight: 700,
+                cursor: "pointer",
+                fontFamily: "var(--font-body)",
               }}
             >
-              {isReg ? "Create your account" : "Welcome back"}
-            </h2>
-            <p style={{ fontSize: 14, color: "#888", marginTop: 8 }}>
-              {isReg
-                ? "Register to start ordering uniforms"
-                : "Sign in to your parent account"}
+              Create an account
+            </button>
+
+            <p
+              style={{
+                fontSize: 12,
+                color: "#9aa2a8",
+                textAlign: "center",
+                marginTop: 6,
+              }}
+            >
+              Forgot your password? Contact us at{" "}
+              <a
+                href="mailto:info@wonderworldmontessori.ca"
+                style={{
+                  color: "#5e9483",
+                  fontWeight: 600,
+                  textDecoration: "none",
+                }}
+              >
+                info@wonderworldmontessori.ca
+              </a>
             </p>
           </div>
-
-          {/* ── Login form ─────────────────────────────── */}
-          {!isReg ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        ) : (
+          /* ── Register form ─────────────────────────── */
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: 12,
+              }}
+            >
               <div>
-                <label style={labelStyle}>Email address</label>
+                <label style={labelStyle}>First Name *</label>
                 <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="parent@email.com"
-                  style={inputStyle}
-                  onFocus={(e) => (e.target.style.borderColor = "#111")}
+                  value={form.firstName}
+                  onChange={(e) =>
+                    setForm({ ...form, firstName: e.target.value })
+                  }
+                  placeholder="Jane"
+                  style={plainInput}
+                  onFocus={(e) => (e.target.style.borderColor = "#6fa595")}
                   onBlur={(e) => (e.target.style.borderColor = "#e5e7eb")}
                 />
               </div>
               <div>
-                <label style={labelStyle}>Password</label>
+                <label style={labelStyle}>Last Name</label>
+                <input
+                  value={form.lastName}
+                  onChange={(e) =>
+                    setForm({ ...form, lastName: e.target.value })
+                  }
+                  placeholder="Smith"
+                  style={plainInput}
+                  onFocus={(e) => (e.target.style.borderColor = "#6fa595")}
+                  onBlur={(e) => (e.target.style.borderColor = "#e5e7eb")}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label style={labelStyle}>Email address *</label>
+              <input
+                type="email"
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+                placeholder="parent@email.com"
+                style={plainInput}
+                onFocus={(e) => (e.target.style.borderColor = "#6fa595")}
+                onBlur={(e) => (e.target.style.borderColor = "#e5e7eb")}
+              />
+            </div>
+
+            <div>
+              <label style={labelStyle}>Phone</label>
+              <input
+                type="tel"
+                value={form.phone}
+                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                placeholder="123-456-7890"
+                style={plainInput}
+                onFocus={(e) => (e.target.style.borderColor = "#6fa595")}
+                onBlur={(e) => (e.target.style.borderColor = "#e5e7eb")}
+              />
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: 12,
+              }}
+            >
+              <div>
+                <label style={labelStyle}>Password *</label>
                 <input
                   type="password"
-                  value={pass}
-                  onChange={(e) => setPass(e.target.value)}
-                  placeholder="••••••••"
-                  style={inputStyle}
-                  onFocus={(e) => (e.target.style.borderColor = "#111")}
+                  value={form.password}
+                  onChange={(e) =>
+                    setForm({ ...form, password: e.target.value })
+                  }
+                  placeholder="Create a password"
+                  style={plainInput}
+                  onFocus={(e) => (e.target.style.borderColor = "#6fa595")}
                   onBlur={(e) => (e.target.style.borderColor = "#e5e7eb")}
                 />
               </div>
-              <button
-                onClick={handleLogin}
-                disabled={loginLoading}
-                style={{
-                  width: "100%",
-                  padding: "13px",
-                  background: loginLoading ? "#ccc" : "#111",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: 10,
-                  fontSize: 15,
-                  fontWeight: 700,
-                  cursor: loginLoading ? "not-allowed" : "pointer",
-                  marginTop: 4,
-                  fontFamily: "var(--font-body)",
-                }}
-              >
-                {loginLoading ? "Signing in…" : "Sign In"}
-              </button>
-              <p
-                style={{
-                  fontSize: 11,
-                  color: "#888",
-                  textAlign: "center",
-                  marginTop: 4,
-                }}
-              >
-                Forgot your password? Contact us at{" "}
-                <a
-                  href="mailto:info@wonderworldmontessori.ca"
+              <div>
+                <label style={labelStyle}>Re-enter Password *</label>
+                <input
+                  type="password"
+                  value={form.confirmPassword}
+                  onChange={(e) =>
+                    setForm({ ...form, confirmPassword: e.target.value })
+                  }
+                  placeholder="••••••••"
+                  style={plainInput}
+                  onFocus={(e) => (e.target.style.borderColor = "#6fa595")}
+                  onBlur={(e) => (e.target.style.borderColor = "#e5e7eb")}
+                />
+              </div>
+            </div>
+
+            <div>
+              <div style={{ marginBottom: 12 }}>
+                <label style={{ ...labelStyle, fontSize: 13, color: "#111" }}>
+                  Children
+                </label>
+                <span style={{ fontSize: 12, color: "#888" }}>
+                  At least one child is required
+                </span>
+              </div>
+              {form.children.map((child, i) => (
+                <div
+                  key={i}
                   style={{
-                    color: "#1a5c47",
-                    fontWeight: 600,
-                    textDecoration: "none",
+                    background: "#f9fafb",
+                    border: "1.5px solid #e5e7eb",
+                    borderRadius: 10,
+                    padding: "14px 16px",
+                    marginBottom: 10,
                   }}
                 >
-                  info@wonderworldmontessori.ca
-                </a>
-              </p>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 12,
-                  margin: "4px 0",
-                }}
-              >
-                <div style={{ flex: 1, height: 1, background: "#f3f4f6" }} />
-                <span style={{ fontSize: 12, color: "#aaa" }}>or</span>
-                <div style={{ flex: 1, height: 1, background: "#f3f4f6" }} />
-              </div>
-              <button
-                onClick={() => setIsReg(true)}
-                style={{
-                  width: "100%",
-                  padding: "12px",
-                  background: "#fff",
-                  color: "#111",
-                  border: "1.5px solid #e5e7eb",
-                  borderRadius: 10,
-                  fontSize: 14,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  fontFamily: "var(--font-body)",
-                }}
-              >
-                Create an account
-              </button>
-            </div>
-          ) : (
-            /* ── Register form ───────────────────────── */
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              {/* Name row */}
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
-                  gap: 12,
-                }}
-              >
-                <div>
-                  <label style={labelStyle}>First Name *</label>
-                  <input
-                    value={form.firstName}
-                    onChange={(e) =>
-                      setForm({ ...form, firstName: e.target.value })
-                    }
-                    placeholder="Jane"
-                    style={inputStyle}
-                    onFocus={(e) => (e.target.style.borderColor = "#111")}
-                    onBlur={(e) => (e.target.style.borderColor = "#e5e7eb")}
-                  />
-                </div>
-                <div>
-                  <label style={labelStyle}>Last Name</label>
-                  <input
-                    value={form.lastName}
-                    onChange={(e) =>
-                      setForm({ ...form, lastName: e.target.value })
-                    }
-                    placeholder="Smith"
-                    style={inputStyle}
-                    onFocus={(e) => (e.target.style.borderColor = "#111")}
-                    onBlur={(e) => (e.target.style.borderColor = "#e5e7eb")}
-                  />
-                </div>
-              </div>
-
-              {/* Email */}
-              <div>
-                <label style={labelStyle}>Email address *</label>
-                <input
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  placeholder="parent@email.com"
-                  style={inputStyle}
-                  onFocus={(e) => (e.target.style.borderColor = "#111")}
-                  onBlur={(e) => (e.target.style.borderColor = "#e5e7eb")}
-                />
-              </div>
-
-              {/* Phone */}
-              <div>
-                <label style={labelStyle}>Phone</label>
-                <input
-                  type="tel"
-                  value={form.phone}
-                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                  placeholder="123-456-7890"
-                  style={inputStyle}
-                  onFocus={(e) => (e.target.style.borderColor = "#111")}
-                  onBlur={(e) => (e.target.style.borderColor = "#e5e7eb")}
-                />
-              </div>
-
-              {/* Password row */}
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
-                  gap: 12,
-                }}
-              >
-                <div>
-                  <label style={labelStyle}>Password *</label>
-                  <input
-                    type="password"
-                    value={form.password}
-                    onChange={(e) =>
-                      setForm({ ...form, password: e.target.value })
-                    }
-                    placeholder="Create a password"
-                    style={inputStyle}
-                    onFocus={(e) => (e.target.style.borderColor = "#111")}
-                    onBlur={(e) => (e.target.style.borderColor = "#e5e7eb")}
-                  />
-                </div>
-                <div>
-                  <label style={labelStyle}>Re-enter Password *</label>
-                  <input
-                    type="password"
-                    value={form.confirmPassword}
-                    onChange={(e) =>
-                      setForm({ ...form, confirmPassword: e.target.value })
-                    }
-                    placeholder="••••••••"
-                    style={inputStyle}
-                    onFocus={(e) => (e.target.style.borderColor = "#111")}
-                    onBlur={(e) => (e.target.style.borderColor = "#e5e7eb")}
-                  />
-                </div>
-              </div>
-
-              {/* Children */}
-              <div>
-                <div style={{ marginBottom: 12 }}>
-                  <label style={{ ...labelStyle, fontSize: 13, color: "#111" }}>
-                    Children
-                  </label>
-                  <span style={{ fontSize: 12, color: "#888" }}>
-                    At least one child is required
-                  </span>
-                </div>
-                {form.children.map((child, i) => (
                   <div
-                    key={i}
                     style={{
-                      background: "#f9fafb",
-                      border: "1.5px solid #e5e7eb",
-                      borderRadius: 10,
-                      padding: "14px 16px",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
                       marginBottom: 10,
                     }}
                   >
-                    <div
+                    <span
                       style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        marginBottom: 10,
+                        fontSize: 12,
+                        fontWeight: 700,
+                        color: "#555",
+                        letterSpacing: ".04em",
+                        textTransform: "uppercase",
                       }}
                     >
-                      <span
+                      Child {form.children.length > 1 ? i + 1 : ""}
+                    </span>
+                    {form.children.length > 1 && (
+                      <button
+                        onClick={() =>
+                          setForm({
+                            ...form,
+                            children: form.children.filter((_, j) => j !== i),
+                          })
+                        }
                         style={{
-                          fontSize: 12,
-                          fontWeight: 700,
-                          color: "#555",
-                          letterSpacing: ".04em",
-                          textTransform: "uppercase",
+                          background: "none",
+                          border: "none",
+                          color: "#f87171",
+                          cursor: "pointer",
+                          fontSize: 13,
+                          fontWeight: 600,
+                          padding: 0,
                         }}
                       >
-                        Child {form.children.length > 1 ? i + 1 : ""}
-                      </span>
-                      {form.children.length > 1 && (
-                        <button
-                          onClick={() =>
-                            setForm({
-                              ...form,
-                              children: form.children.filter((_, j) => j !== i),
-                            })
-                          }
-                          style={{
-                            background: "none",
-                            border: "none",
-                            color: "#f87171",
-                            cursor: "pointer",
-                            fontSize: 13,
-                            fontWeight: 600,
-                            padding: 0,
-                          }}
-                        >
-                          Remove
-                        </button>
-                      )}
-                    </div>
-                    <div
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns: isDesktop ? "1fr 1fr" : "1fr",
-                        gap: 10,
-                        marginBottom: 10,
-                      }}
-                    >
-                      <div>
-                        <label style={labelStyle}>First Name *</label>
-                        <input
-                          placeholder="Child's first name"
-                          value={child.firstName || ""}
-                          onChange={(e) => {
-                            const updated = [...form.children];
-                            updated[i] = {
-                              ...updated[i],
-                              firstName: e.target.value,
-                            };
-                            setForm({ ...form, children: updated });
-                          }}
-                          style={inputStyle}
-                          onFocus={(e) => (e.target.style.borderColor = "#111")}
-                          onBlur={(e) =>
-                            (e.target.style.borderColor = "#e5e7eb")
-                          }
-                        />
-                      </div>
-                      <div>
-                        <label style={labelStyle}>Last Name *</label>
-                        <input
-                          placeholder="Child's last name"
-                          value={child.lastName || ""}
-                          onChange={(e) => {
-                            const updated = [...form.children];
-                            updated[i] = {
-                              ...updated[i],
-                              lastName: e.target.value,
-                            };
-                            setForm({ ...form, children: updated });
-                          }}
-                          style={inputStyle}
-                          onFocus={(e) => (e.target.style.borderColor = "#111")}
-                          onBlur={(e) =>
-                            (e.target.style.borderColor = "#e5e7eb")
-                          }
-                        />
-                      </div>
-                    </div>
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: isDesktop ? "1fr 1fr" : "1fr",
+                      gap: 10,
+                      marginBottom: 10,
+                    }}
+                  >
                     <div>
-                      <label style={labelStyle}>Class *</label>
+                      <label style={labelStyle}>First Name *</label>
                       <input
-                        placeholder="e.g. K1, Grade 2"
-                        value={child.class || ""}
+                        placeholder="Child's first name"
+                        value={child.firstName || ""}
                         onChange={(e) => {
                           const updated = [...form.children];
-                          updated[i] = { ...updated[i], class: e.target.value };
+                          updated[i] = {
+                            ...updated[i],
+                            firstName: e.target.value,
+                          };
                           setForm({ ...form, children: updated });
                         }}
-                        style={inputStyle}
-                        onFocus={(e) => (e.target.style.borderColor = "#111")}
+                        style={plainInput}
+                        onFocus={(e) =>
+                          (e.target.style.borderColor = "#6fa595")
+                        }
+                        onBlur={(e) => (e.target.style.borderColor = "#e5e7eb")}
+                      />
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Last Name *</label>
+                      <input
+                        placeholder="Child's last name"
+                        value={child.lastName || ""}
+                        onChange={(e) => {
+                          const updated = [...form.children];
+                          updated[i] = {
+                            ...updated[i],
+                            lastName: e.target.value,
+                          };
+                          setForm({ ...form, children: updated });
+                        }}
+                        style={plainInput}
+                        onFocus={(e) =>
+                          (e.target.style.borderColor = "#6fa595")
+                        }
                         onBlur={(e) => (e.target.style.borderColor = "#e5e7eb")}
                       />
                     </div>
                   </div>
-                ))}
-                <button
-                  onClick={() =>
-                    setForm({
-                      ...form,
-                      children: [
-                        ...form.children,
-                        { firstName: "", lastName: "", class: "" },
-                      ],
-                    })
-                  }
-                  style={{
-                    width: "100%",
-                    fontSize: 13,
-                    color: "#1a5c47",
-                    background: "#f0fdf4",
-                    border: "1.5px dashed #86efac",
-                    borderRadius: 8,
-                    cursor: "pointer",
-                    fontWeight: 600,
-                    padding: "10px 16px",
-                    fontFamily: "var(--font-body)",
-                  }}
-                >
-                  + Add another child
-                </button>
-              </div>
-
+                  <div>
+                    <label style={labelStyle}>Class *</label>
+                    <input
+                      placeholder="e.g. K1, Grade 2"
+                      value={child.class || ""}
+                      onChange={(e) => {
+                        const updated = [...form.children];
+                        updated[i] = { ...updated[i], class: e.target.value };
+                        setForm({ ...form, children: updated });
+                      }}
+                      style={plainInput}
+                      onFocus={(e) => (e.target.style.borderColor = "#6fa595")}
+                      onBlur={(e) => (e.target.style.borderColor = "#e5e7eb")}
+                    />
+                  </div>
+                </div>
+              ))}
               <button
-                onClick={handleRegister}
-                disabled={loginLoading}
+                onClick={() =>
+                  setForm({
+                    ...form,
+                    children: [
+                      ...form.children,
+                      { firstName: "", lastName: "", class: "" },
+                    ],
+                  })
+                }
                 style={{
                   width: "100%",
-                  padding: "13px",
-                  background: loginLoading ? "#ccc" : "#111",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: 10,
-                  fontSize: 15,
-                  fontWeight: 700,
-                  cursor: loginLoading ? "not-allowed" : "pointer",
-                  marginTop: 4,
+                  fontSize: 13,
+                  color: "#5e9483",
+                  background: "#eef6f2",
+                  border: "1.5px dashed #b9d9cb",
+                  borderRadius: 8,
+                  cursor: "pointer",
+                  fontWeight: 600,
+                  padding: "10px 16px",
                   fontFamily: "var(--font-body)",
                 }}
               >
-                {loginLoading ? "Creating account…" : "Create Account"}
+                + Add another child
               </button>
-
-              <p style={{ textAlign: "center", fontSize: 13, color: "#888" }}>
-                Already registered?{" "}
-                <button
-                  onClick={() => setIsReg(false)}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    color: "#1a5c47",
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    fontSize: 13,
-                    fontFamily: "var(--font-body)",
-                  }}
-                >
-                  Sign in
-                </button>
-              </p>
             </div>
-          )}
-        </div>
+
+            <button
+              onClick={handleRegister}
+              disabled={loginLoading}
+              style={{
+                width: "100%",
+                padding: "14px",
+                background: loginLoading ? "#a9c4ba" : "#6fa595",
+                color: "#fff",
+                border: "none",
+                borderRadius: 10,
+                fontSize: 15,
+                fontWeight: 700,
+                cursor: loginLoading ? "not-allowed" : "pointer",
+                marginTop: 4,
+                fontFamily: "var(--font-body)",
+                transition: "background .15s",
+              }}
+              onMouseEnter={(e) => {
+                if (!loginLoading) e.currentTarget.style.background = "#5e9483";
+              }}
+              onMouseLeave={(e) => {
+                if (!loginLoading) e.currentTarget.style.background = "#6fa595";
+              }}
+            >
+              {loginLoading ? "Creating account…" : "Create Account"}
+            </button>
+
+            <p style={{ textAlign: "center", fontSize: 13, color: "#888" }}>
+              Already registered?{" "}
+              <button
+                onClick={() => setIsReg(false)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "#5e9483",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  fontSize: 13,
+                  fontFamily: "var(--font-body)",
+                }}
+              >
+                Sign in
+              </button>
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
 }
-
-// ─── PRODUCT IMAGE GALLERY (shared parent/admin) ──────────────
-// Shows a scrollable carousel if images[] exist, else shows emoji fallback.
 function ProductImageGallery({
   images = [],
   imageEmoji = "👕",
@@ -2724,7 +2763,7 @@ function ParentHome() {
               {/* Image */}
               <div
                 style={{
-                  aspectRatio: "3/4",
+                  aspectRatio: "4/5",
                   overflow: "hidden",
                   borderRadius: 10,
                   background: "#f3f4f6",
@@ -4836,7 +4875,7 @@ function ParentShell() {
       >
         <div
           style={{
-            maxWidth: 1280,
+            maxWidth: 1600,
             margin: "0 auto",
             padding: isDesktop ? "0 48px" : "0 16px",
             height: 64,
@@ -5061,7 +5100,7 @@ function ParentShell() {
       <main
         style={{
           flex: 1,
-          maxWidth: 1280,
+          maxWidth: 1600,
           margin: "0 auto",
           width: "100%",
           padding: isDesktop ? "40px 48px" : "20px 16px 32px",
