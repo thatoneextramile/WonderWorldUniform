@@ -196,6 +196,7 @@ import {
 } from "react";
 import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import { createPortal } from "react-dom";
+import logo from "./public/logo-1777057887021.jpg";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
 
@@ -1592,13 +1593,18 @@ function ParentLogin() {
               justifyContent: "center",
             }}
           >
-            {state.settings.logoUrl && (
+            <img
+              src={logo}
+              alt="Logo"
+              style={{ width: "100%", height: "100%", objectFit: "contain" }}
+            />
+            {/* {state.settings.logoUrl && (
               <img
                 src={state.settings.logoUrl}
                 alt="Logo"
                 style={{ width: "100%", height: "100%", objectFit: "contain" }}
               />
-            )}
+            )} */}
           </div>
           <h1
             style={{
@@ -9591,13 +9597,11 @@ function AdminLoginPage() {
               overflow: "hidden",
             }}
           >
-            {state.settings.logoUrl && (
-              <img
-                src={state.settings.logoUrl}
-                alt="Logo"
-                style={{ width: "100%", height: "100%", objectFit: "contain" }}
-              />
-            )}
+            <img
+              src={logo}
+              alt="Logo"
+              style={{ width: "100%", height: "100%", objectFit: "contain" }}
+            />
           </div>
           <h1
             style={{
