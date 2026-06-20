@@ -1592,14 +1592,12 @@ function ParentLogin() {
               justifyContent: "center",
             }}
           >
-            {state.settings.logoUrl ? (
+            {state.settings.logoUrl && (
               <img
                 src={state.settings.logoUrl}
                 alt="Logo"
                 style={{ width: "100%", height: "100%", objectFit: "contain" }}
               />
-            ) : (
-              <span style={{ fontSize: 36 }}>{state.settings.logoEmoji}</span>
             )}
           </div>
           <h1
@@ -5946,6 +5944,8 @@ function AdminInventory() {
   const [apiRows, setApiRows] = useState(null);
   const [saving, setSaving] = useState({});
   const [editingRow, setEditingRow] = useState(null); // { invId, field: "total"|"sold", value
+  const windowWidth = useWindowWidth();
+  const isDesktop = windowWidth >= 1024;
 
   useEffect(() => {
     api("/api/admin/inventory")
@@ -6108,7 +6108,13 @@ function AdminInventory() {
           flexWrap: "wrap",
         }}
       >
-        <div style={{ position: "relative", flex: 1, minWidth: 160 }}>
+        <div
+          style={{
+            position: "relative",
+            flex: 1,
+            minWidth: isDesktop ? 160 : 120,
+          }}
+        >
           <span
             style={{
               position: "absolute",
@@ -6174,9 +6180,22 @@ function AdminInventory() {
           {apiRows === null ? "Loading inventory…" : "No inventory found."}
         </div>
       ) : (
-        <div style={{ display: "flex", gap: 20, alignItems: "flex-start" }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: isDesktop ? "row" : "column",
+            gap: isDesktop ? 20 : 14,
+            alignItems: isDesktop ? "flex-start" : "stretch",
+          }}
+        >
           {/* Main table */}
-          <div style={{ overflowX: "auto", flex: 1 }}>
+          <div
+            style={{
+              overflowX: "auto",
+              flex: 1,
+              WebkitOverflowScrolling: "touch",
+            }}
+          >
             <table
               style={{
                 borderCollapse: "collapse",
@@ -6193,10 +6212,10 @@ function AdminInventory() {
                   <th
                     className="txt-th"
                     style={{
-                      padding: "12px 16px",
+                      padding: isDesktop ? "12px 16px" : "10px 12px",
                       textAlign: "left",
                       color: "var(--text)",
-                      minWidth: 180,
+                      minWidth: isDesktop ? 180 : 140,
                       position: "sticky",
                       left: 0,
                       background: "var(--bg2)",
@@ -6213,10 +6232,10 @@ function AdminInventory() {
                       className="txt-th"
                       key={size}
                       style={{
-                        padding: "12px 16px",
+                        padding: isDesktop ? "12px 16px" : "10px 12px",
                         textAlign: "center",
                         color: "var(--sky-dark)",
-                        minWidth: 150,
+                        minWidth: isDesktop ? 150 : 128,
                         borderBottom: "2px solid var(--border)",
                         borderRight: "1px solid var(--border)",
                       }}
@@ -6246,7 +6265,7 @@ function AdminInventory() {
                       <td
                         className="txt-base"
                         style={{
-                          padding: "16px",
+                          padding: isDesktop ? "16px" : "10px 12px",
                           borderBottom: "1px solid var(--border)",
                           borderRight: "2px solid var(--border)",
                           position: "sticky",
@@ -6307,7 +6326,7 @@ function AdminInventory() {
                             <td
                               key={size}
                               style={{
-                                padding: "16px",
+                                padding: isDesktop ? "16px" : "10px 12px",
                                 textAlign: "center",
                                 borderBottom: "1px solid var(--border)",
                                 borderRight: "1px solid var(--border)",
@@ -6324,7 +6343,7 @@ function AdminInventory() {
                           <td
                             key={size}
                             style={{
-                              padding: "12px 16px",
+                              padding: isDesktop ? "12px 16px" : "8px 10px",
                               borderBottom: "1px solid var(--border)",
                               borderRight: "1px solid var(--border)",
                               verticalAlign: "top",
@@ -6584,10 +6603,11 @@ function AdminInventory() {
           {/* Matrix Guide sidebar — matches screenshot */}
           <div
             style={{
-              width: 180,
+              width: isDesktop ? 180 : "100%",
               flexShrink: 0,
               display: "flex",
-              flexDirection: "column",
+              flexDirection: isDesktop ? "column" : "row",
+              flexWrap: "wrap",
               gap: 12,
             }}
           >
@@ -6597,6 +6617,8 @@ function AdminInventory() {
                 border: "1px solid var(--border)",
                 borderRadius: "var(--radius-sm)",
                 padding: "14px 16px",
+                flex: isDesktop ? "none" : "1 1 240px",
+                minWidth: isDesktop ? "auto" : 240,
               }}
             >
               <div
@@ -6673,6 +6695,8 @@ function AdminInventory() {
                 border: "1px solid var(--lemon-mid)",
                 borderRadius: "var(--radius-sm)",
                 padding: "14px 16px",
+                flex: isDesktop ? "none" : "1 1 240px",
+                minWidth: isDesktop ? "auto" : 240,
               }}
             >
               <div
@@ -8642,7 +8666,16 @@ function ConfirmModal({
 function AdminShell() {
   const { state, dispatch } = useApp();
   const { adminPage } = state;
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const windowWidth = useWindowWidth();
+  const isDesktop = windowWidth >= 1024;
+  // Desktop: sidebar starts open and is a permanent rail (collapsible to icons).
+  // Mobile: sidebar starts closed and behaves as an overlay drawer.
+  const [sidebarOpen, setSidebarOpen] = useState(isDesktop);
+
+  // Keep sidebar state sensible when crossing the desktop/mobile breakpoint
+  useEffect(() => {
+    setSidebarOpen(isDesktop);
+  }, [isDesktop]);
 
   // The role stored on the logged-in admin user
   const adminRole = state.currentUser?.role || "STAFF";
@@ -8717,18 +8750,43 @@ function AdminShell() {
         height: "100vh",
         overflow: "hidden",
         background: "var(--bg2)",
+        position: "relative",
       }}
     >
-      {/* Sidebar */}
+      {/* Mobile backdrop — closes the drawer on tap outside */}
+      {!isDesktop && sidebarOpen && (
+        <div
+          onClick={() => setSidebarOpen(false)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,.45)",
+            zIndex: 199,
+          }}
+        />
+      )}
+
+      {/* Sidebar — permanent rail on desktop, slide-over drawer on mobile */}
       <div
         style={{
-          width: sidebarOpen ? 160 : 52,
+          width: isDesktop ? (sidebarOpen ? 160 : 52) : 220,
           background: "var(--sky-dark-bg)",
           flexShrink: 0,
-          transition: "width .2s",
+          transition: isDesktop ? "width .2s" : "transform .2s",
           display: "flex",
           flexDirection: "column",
           overflow: "hidden",
+          ...(isDesktop
+            ? { position: "relative" }
+            : {
+                position: "fixed",
+                top: 0,
+                bottom: 0,
+                left: 0,
+                zIndex: 200,
+                transform: sidebarOpen ? "translateX(0)" : "translateX(-100%)",
+                boxShadow: sidebarOpen ? "4px 0 24px rgba(0,0,0,.25)" : "none",
+              }),
         }}
       >
         <div
@@ -8757,7 +8815,7 @@ function AdminShell() {
               {state.settings.logoEmoji}
             </span>
           )}
-          {sidebarOpen && (
+          {(sidebarOpen || !isDesktop) && (
             <span
               style={{
                 fontFamily: "var(--font-display)",
@@ -8794,7 +8852,7 @@ function AdminShell() {
             if (item.section) lastSection = item.section;
             return (
               <div key={item.id}>
-                {showSection && sidebarOpen && (
+                {showSection && (sidebarOpen || !isDesktop) && (
                   <div
                     style={{
                       padding: "8px 14px 3px",
@@ -8809,15 +8867,16 @@ function AdminShell() {
                   </div>
                 )}
                 <button
-                  onClick={() =>
-                    dispatch({ type: "SET_ADMIN_PAGE", page: item.id })
-                  }
+                  onClick={() => {
+                    dispatch({ type: "SET_ADMIN_PAGE", page: item.id });
+                    if (!isDesktop) setSidebarOpen(false);
+                  }}
                   style={{
                     width: "100%",
                     display: "flex",
                     alignItems: "center",
                     gap: 8,
-                    padding: sidebarOpen ? "8px 14px" : "8px",
+                    padding: sidebarOpen || !isDesktop ? "8px 14px" : "8px",
                     background:
                       adminPage === item.id ? "rgba(0,0,0,.2)" : "none",
                     border: "none",
@@ -8835,7 +8894,7 @@ function AdminShell() {
                   <span style={{ fontSize: 15, flexShrink: 0 }}>
                     {item.icon}
                   </span>
-                  {sidebarOpen && (
+                  {(sidebarOpen || !isDesktop) && (
                     <span style={{ whiteSpace: "nowrap", overflow: "hidden" }}>
                       {item.label}
                     </span>
@@ -8868,11 +8927,12 @@ function AdminShell() {
               fontFamily: "var(--font-body)",
               fontSize: 11,
               fontWeight: 600,
-              justifyContent: sidebarOpen ? "flex-start" : "center",
+              justifyContent:
+                sidebarOpen || !isDesktop ? "flex-start" : "center",
             }}
           >
             <span style={{ fontSize: 14 }}>🚪</span>
-            {sidebarOpen && "Sign out"}
+            {(sidebarOpen || !isDesktop) && "Sign out"}
           </button>
         </div>
       </div>
@@ -8893,23 +8953,61 @@ function AdminShell() {
           style={{
             background: "var(--bg)",
             borderBottom: "1px solid var(--border)",
-            padding: "10px 20px",
+            padding: isDesktop ? "10px 20px" : "10px 14px",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
+            gap: 8,
           }}
         >
           <div
             style={{
-              fontFamily: "var(--font-display)",
-              fontWeight: 700,
-              fontSize: 15,
-              color: "var(--text)",
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              minWidth: 0,
             }}
           >
-            {navItems.find((n) => n.id === adminPage)?.label || "Admin"}
+            {/* Hamburger — mobile only */}
+            {!isDesktop && (
+              <button
+                onClick={() => setSidebarOpen(true)}
+                aria-label="Open menu"
+                style={{
+                  background: "none",
+                  border: "none",
+                  fontSize: 18,
+                  color: "var(--text2)",
+                  cursor: "pointer",
+                  padding: 4,
+                  flexShrink: 0,
+                }}
+              >
+                ☰
+              </button>
+            )}
+            <div
+              style={{
+                fontFamily: "var(--font-display)",
+                fontWeight: 700,
+                fontSize: isDesktop ? 15 : 14,
+                color: "var(--text)",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              {navItems.find((n) => n.id === adminPage)?.label || "Admin"}
+            </div>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              flexShrink: 0,
+            }}
+          >
             <div
               style={{
                 width: 30,
@@ -8922,15 +9020,18 @@ function AdminShell() {
                 fontSize: 13,
                 fontWeight: 800,
                 color: "var(--sky-dark)",
+                flexShrink: 0,
               }}
             >
               {(state.currentUser?.name || "A").charAt(0)}
             </div>
-            <span
-              style={{ fontSize: 12, fontWeight: 600, color: "var(--text2)" }}
-            >
-              {state.currentUser?.name || "Admin"}
-            </span>
+            {isDesktop && (
+              <span
+                style={{ fontSize: 12, fontWeight: 600, color: "var(--text2)" }}
+              >
+                {state.currentUser?.name || "Admin"}
+              </span>
+            )}
           </div>
         </div>
 
@@ -8938,7 +9039,7 @@ function AdminShell() {
         <div
           style={{
             flex: 1,
-            padding: 20,
+            padding: isDesktop ? 20 : 12,
             overflowY: "auto",
             minHeight: 0,
             position: "relative",
@@ -9490,14 +9591,12 @@ function AdminLoginPage() {
               overflow: "hidden",
             }}
           >
-            {state.settings.logoUrl ? (
+            {state.settings.logoUrl && (
               <img
                 src={state.settings.logoUrl}
                 alt="Logo"
                 style={{ width: "100%", height: "100%", objectFit: "contain" }}
               />
-            ) : (
-              state.settings.logoEmoji
             )}
           </div>
           <h1
