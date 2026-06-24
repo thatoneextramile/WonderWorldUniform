@@ -2583,9 +2583,18 @@ function ParentHome() {
   // Products come from initAppData via SET_INITIAL_DATA.
   // Show a loading message until at least one product arrives.
   const productsLoaded = state.products.length > 0;
-  const filtered = state.products.filter(
-    (p) => p.isActive && (cat === "All Items" || p.category === cat),
-  );
+  const filtered = state.products
+    .filter((p) => p.isActive && (cat === "All Items" || p.category === cat))
+    .sort((a, b) => {
+      if (cat !== "All Items") return a.name.localeCompare(b.name);
+      const ai = cats.indexOf(a.category ?? "");
+      const bi = cats.indexOf(b.category ?? "");
+      const catDiff = (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+      return catDiff !== 0 ? catDiff : a.name.localeCompare(b.name);
+    });
+  // const filtered = state.products
+  //   .filter((p) => p.isActive && (cat === "All Items" || p.category === cat))
+  //   .sort((a, b) => a.name.localeCompare(b.name));
   const orderStockThreshold = state.settings.orderStockThreshold ?? 0;
 
   // Set of "productId-size" keys that are blocked
@@ -5596,211 +5605,213 @@ function AdminProducts() {
             </tr>
           </thead>
           <tbody className="txt-base">
-            {state.products.map((p) => (
-              <tr key={p.id} style={{ transition: "background .15s" }}>
-                <td
-                  style={{
-                    padding: "10px 10px",
-                    borderBottom: "0.5px solid var(--border)",
-                  }}
-                >
-                  <div
-                    style={{ display: "flex", alignItems: "center", gap: 8 }}
+            {[...state.products]
+              .sort((a, b) => a.name.localeCompare(b.name))
+              .map((p) => (
+                <tr key={p.id} style={{ transition: "background .15s" }}>
+                  <td
+                    style={{
+                      padding: "10px 10px",
+                      borderBottom: "0.5px solid var(--border)",
+                    }}
                   >
                     <div
-                      style={{
-                        width: 32,
-                        height: 32,
-                        borderRadius: 6,
-                        overflow: "hidden",
-                        flexShrink: 0,
-                      }}
+                      style={{ display: "flex", alignItems: "center", gap: 8 }}
                     >
-                      {p.images && p.images.length > 0 ? (
-                        <img
-                          src={p.images[0]}
-                          alt=""
-                          style={{
-                            width: "100%",
-                            height: "100%",
-                            objectFit: "contain",
-                          }}
-                        />
-                      ) : (
-                        <div
-                          style={{
-                            width: 32,
-                            height: 32,
-                            background: p.imageBg,
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            fontSize: 16,
-                          }}
-                        >
-                          {p.imageEmoji}
-                        </div>
-                      )}
-                    </div>
-                    <div>
-                      <div style={{ fontWeight: 700 }}>{p.name}</div>
-                      <div style={{ fontSize: 10, color: "var(--text3)" }}>
-                        {p.category}
-                      </div>
-                    </div>
-                  </div>
-                </td>
-                <td
-                  style={{
-                    padding: "10px 10px",
-                    borderBottom: "0.5px solid var(--border)",
-                    fontWeight: 700,
-                    color: "#2a7a4e",
-                  }}
-                >
-                  ${p.sellingPrice}
-                </td>
-                {isSuperAdmin && (
-                  <td
-                    style={{
-                      padding: "10px 10px",
-                      borderBottom: "0.5px solid var(--border)",
-                      fontWeight: 700,
-                      color: "var(--peach-dark)",
-                    }}
-                  >
-                    ${p.costPrice}
-                  </td>
-                )}
-                {isSuperAdmin && (
-                  <td
-                    style={{
-                      padding: "10px 10px",
-                      borderBottom: "0.5px solid var(--border)",
-                      fontWeight: 700,
-                      color: "#1a5c47",
-                    }}
-                  >
-                    ${(p.sellingPrice - p.costPrice).toFixed(2)}
-                  </td>
-                )}
-
-                <td
-                  style={{
-                    padding: "10px 10px",
-                    borderBottom: "0.5px solid var(--border)",
-                  }}
-                >
-                  <div style={{ display: "flex", gap: 3, flexWrap: "wrap" }}>
-                    {sortSizes(p.sizes).map((s) => (
-                      <span
-                        key={s}
+                      <div
                         style={{
-                          background: "var(--bg3)",
-                          border: "0.5px solid var(--border)",
-                          borderRadius: 4,
-                          fontSize: 9,
-                          fontWeight: 700,
-                          padding: "2px 5px",
+                          width: 32,
+                          height: 32,
+                          borderRadius: 6,
+                          overflow: "hidden",
+                          flexShrink: 0,
                         }}
                       >
-                        {displaySize(s)}
-                      </span>
-                    ))}
-                  </div>
-                </td>
-                <td
-                  style={{
-                    padding: "10px 10px",
-                    borderBottom: "0.5px solid var(--border)",
-                  }}
-                >
-                  <Toggle
-                    checked={p.isActive}
-                    onChange={async (v) => {
-                      try {
-                        await api(`/api/admin/products/${p.id}`, {
-                          method: "PUT",
-                          body: { isActive: v },
-                        });
-                        dispatch({
-                          type: "UPDATE_PRODUCT",
-                          product: { ...p, isActive: v },
-                        });
-                      } catch (err) {
-                        dispatch({
-                          type: "SET_TOAST",
-                          message: err.message || "Failed to update product",
-                        });
-                      }
+                        {p.images && p.images.length > 0 ? (
+                          <img
+                            src={p.images[0]}
+                            alt=""
+                            style={{
+                              width: "100%",
+                              height: "100%",
+                              objectFit: "contain",
+                            }}
+                          />
+                        ) : (
+                          <div
+                            style={{
+                              width: 32,
+                              height: 32,
+                              background: p.imageBg,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              fontSize: 16,
+                            }}
+                          >
+                            {p.imageEmoji}
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 700 }}>{p.name}</div>
+                        <div style={{ fontSize: 10, color: "var(--text3)" }}>
+                          {p.category}
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                  <td
+                    style={{
+                      padding: "10px 10px",
+                      borderBottom: "0.5px solid var(--border)",
+                      fontWeight: 700,
+                      color: "#2a7a4e",
                     }}
-                  />
-                </td>
-                <td
-                  style={{
-                    padding: "10px 10px",
-                    borderBottom: "0.5px solid var(--border)",
-                  }}
-                >
-                  <div style={{ display: "flex", gap: 4 }}>
-                    <button
-                      onClick={() => openEdit(p)}
+                  >
+                    ${p.sellingPrice}
+                  </td>
+                  {isSuperAdmin && (
+                    <td
                       style={{
-                        padding: "4px 10px",
-                        borderRadius: 5,
-                        border: "none",
-                        background: "#dce6f0",
-                        color: "#1a3f6e",
-                        fontSize: 11,
+                        padding: "10px 10px",
+                        borderBottom: "0.5px solid var(--border)",
                         fontWeight: 700,
-                        cursor: "pointer",
-                      }}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() =>
-                        setConfirmAction({
-                          message: `Delete "${p.name}"? This cannot be undone.`,
-                          confirmLabel: "Delete",
-                          confirmVariant: "peach",
-                          onConfirm: async () => {
-                            try {
-                              await api(`/api/admin/products/${p.id}`, {
-                                method: "DELETE",
-                              });
-                              dispatch({ type: "DELETE_PRODUCT", id: p.id });
-                              dispatch({
-                                type: "SET_TOAST",
-                                message: "Product deleted",
-                              });
-                            } catch (err) {
-                              dispatch({
-                                type: "SET_TOAST",
-                                message:
-                                  err.message || "Failed to delete product",
-                              });
-                            }
-                          },
-                        })
-                      }
-                      style={{
-                        padding: "4px 10px",
-                        borderRadius: 5,
-                        border: "none",
-                        background: "var(--peach)",
                         color: "var(--peach-dark)",
-                        fontSize: 11,
-                        fontWeight: 700,
-                        cursor: "pointer",
                       }}
                     >
-                      Delete
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+                      ${p.costPrice}
+                    </td>
+                  )}
+                  {isSuperAdmin && (
+                    <td
+                      style={{
+                        padding: "10px 10px",
+                        borderBottom: "0.5px solid var(--border)",
+                        fontWeight: 700,
+                        color: "#1a5c47",
+                      }}
+                    >
+                      ${(p.sellingPrice - p.costPrice).toFixed(2)}
+                    </td>
+                  )}
+
+                  <td
+                    style={{
+                      padding: "10px 10px",
+                      borderBottom: "0.5px solid var(--border)",
+                    }}
+                  >
+                    <div style={{ display: "flex", gap: 3, flexWrap: "wrap" }}>
+                      {sortSizes(p.sizes).map((s) => (
+                        <span
+                          key={s}
+                          style={{
+                            background: "var(--bg3)",
+                            border: "0.5px solid var(--border)",
+                            borderRadius: 4,
+                            fontSize: 9,
+                            fontWeight: 700,
+                            padding: "2px 5px",
+                          }}
+                        >
+                          {displaySize(s)}
+                        </span>
+                      ))}
+                    </div>
+                  </td>
+                  <td
+                    style={{
+                      padding: "10px 10px",
+                      borderBottom: "0.5px solid var(--border)",
+                    }}
+                  >
+                    <Toggle
+                      checked={p.isActive}
+                      onChange={async (v) => {
+                        try {
+                          await api(`/api/admin/products/${p.id}`, {
+                            method: "PUT",
+                            body: { isActive: v },
+                          });
+                          dispatch({
+                            type: "UPDATE_PRODUCT",
+                            product: { ...p, isActive: v },
+                          });
+                        } catch (err) {
+                          dispatch({
+                            type: "SET_TOAST",
+                            message: err.message || "Failed to update product",
+                          });
+                        }
+                      }}
+                    />
+                  </td>
+                  <td
+                    style={{
+                      padding: "10px 10px",
+                      borderBottom: "0.5px solid var(--border)",
+                    }}
+                  >
+                    <div style={{ display: "flex", gap: 4 }}>
+                      <button
+                        onClick={() => openEdit(p)}
+                        style={{
+                          padding: "4px 10px",
+                          borderRadius: 5,
+                          border: "none",
+                          background: "#dce6f0",
+                          color: "#1a3f6e",
+                          fontSize: 11,
+                          fontWeight: 700,
+                          cursor: "pointer",
+                        }}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() =>
+                          setConfirmAction({
+                            message: `Delete "${p.name}"? This cannot be undone.`,
+                            confirmLabel: "Delete",
+                            confirmVariant: "peach",
+                            onConfirm: async () => {
+                              try {
+                                await api(`/api/admin/products/${p.id}`, {
+                                  method: "DELETE",
+                                });
+                                dispatch({ type: "DELETE_PRODUCT", id: p.id });
+                                dispatch({
+                                  type: "SET_TOAST",
+                                  message: "Product deleted",
+                                });
+                              } catch (err) {
+                                dispatch({
+                                  type: "SET_TOAST",
+                                  message:
+                                    err.message || "Failed to delete product",
+                                });
+                              }
+                            },
+                          })
+                        }
+                        style={{
+                          padding: "4px 10px",
+                          borderRadius: 5,
+                          border: "none",
+                          background: "var(--peach)",
+                          color: "var(--peach-dark)",
+                          fontSize: 11,
+                          fontWeight: 700,
+                          cursor: "pointer",
+                        }}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
           </tbody>
         </table>
       </div>
@@ -6798,18 +6809,20 @@ function AdminOrders() {
   }, [search, filterStatus, filterLoc]);
 
   // Client-side filter as a fast fallback while API data loads
-  const filtered = allOrders.filter((o) => {
-    const q = search.toLowerCase();
-    const matchSearch =
-      !q ||
-      o.childName?.toLowerCase().includes(q) ||
-      o.parentName?.toLowerCase().includes(q) ||
-      o.childClass?.toLowerCase().includes(q) ||
-      o.orderNumber?.toLowerCase().includes(q);
-    const matchStatus = !filterStatus || o.status === filterStatus;
-    const matchLoc = !filterLoc || o.locationId === filterLoc;
-    return matchSearch && matchStatus && matchLoc;
-  });
+  const filtered = allOrders
+    .filter((o) => {
+      const q = search.toLowerCase();
+      const matchSearch =
+        !q ||
+        o.childName?.toLowerCase().includes(q) ||
+        o.parentName?.toLowerCase().includes(q) ||
+        o.childClass?.toLowerCase().includes(q) ||
+        o.orderNumber?.toLowerCase().includes(q);
+      const matchStatus = !filterStatus || o.status === filterStatus;
+      const matchLoc = !filterLoc || o.locationId === filterLoc;
+      return matchSearch && matchStatus && matchLoc;
+    })
+    .sort((a, b) => a.orderNumber.localeCompare(b.orderNumber));
 
   function exportCSV() {
     const token = localStorage.getItem("ww_token");
@@ -7305,7 +7318,9 @@ function AdminOrders() {
 function AdminMasterControl() {
   const { state, dispatch } = useApp();
   const [settings, setSettings] = useState({ ...state.settings });
-  const [locations, setLocations] = useState([...state.locations]);
+  const [locations, setLocations] = useState(
+    [...state.locations].sort((a, b) => a.name.localeCompare(b.name)),
+  );
   const [fields, setFields] = useState([...state.formFields]);
   const [newLocName, setNewLocName] = useState("");
   const [tab, setTab] = useState("locations");
@@ -7317,7 +7332,9 @@ function AdminMasterControl() {
     setSettings({ ...state.settings });
   }, [state.settings]);
   useEffect(() => {
-    setLocations([...state.locations]);
+    setLocations(
+      [...state.locations].sort((a, b) => a.name.localeCompare(b.name)),
+    );
   }, [state.locations]);
   useEffect(() => {
     setFields([...state.formFields]);
@@ -9113,7 +9130,15 @@ function AdminParents() {
     const params = new URLSearchParams({ limit: "100" });
     if (search) params.set("search", search);
     api(`/api/admin/parents?${params}`)
-      .then((data) => setParents(data.parents || []))
+      .then((data) =>
+        setParents(
+          (data.parents || []).sort((a, b) =>
+            `${a.firstName} ${a.lastName}`.localeCompare(
+              `${b.firstName} ${b.lastName}`,
+            ),
+          ),
+        ),
+      )
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [search]);
