@@ -6238,6 +6238,8 @@ function AdminInventory() {
           <div
             style={{
               overflowX: "auto",
+              overflowY: "auto",
+              maxHeight: "70vh",
               flex: 1,
               WebkitOverflowScrolling: "touch",
             }}
@@ -6264,6 +6266,7 @@ function AdminInventory() {
                       minWidth: isDesktop ? 180 : 140,
                       position: "sticky",
                       left: 0,
+                      top: 0,
                       background: "var(--bg2)",
                       zIndex: 2,
                       borderBottom: "2px solid var(--border)",
@@ -6284,6 +6287,10 @@ function AdminInventory() {
                         minWidth: isDesktop ? 150 : 128,
                         borderBottom: "2px solid var(--border)",
                         borderRight: "1px solid var(--border)",
+                        position: "sticky",
+                        top: 0,
+                        background: "var(--bg2)",
+                        zIndex: 2,
                       }}
                     >
                       {displaySize(size)}
@@ -6858,7 +6865,9 @@ function AdminOrders() {
 
   const getStatusSelect = (o) => {
     if (o.status === "CANCELLED" || o.status === "PICKED_UP") {
-      const [bg, col] = (STATUS_COLORS[o.status] || "#eef0f4:#5a6072").split(":");
+      const [bg, col] = (STATUS_COLORS[o.status] || "#eef0f4:#5a6072").split(
+        ":",
+      );
       return (
         <span style={{ fontSize: 12, fontWeight: 700 }}>
           Status:{" "}
