@@ -6856,6 +6856,55 @@ function AdminOrders() {
     }
   }
 
+  const getStatusSelect = (o) => {
+    if (o.status === "CANCELLED" || o.status === "PICKED_UP") {
+      const [bg, col] = (STATUS_COLORS[o.status] || "#eef0f4:#5a6072").split(":");
+      return (
+        <span style={{ fontSize: 12, fontWeight: 700 }}>
+          Status:{" "}
+          <span
+            className="txt-badge"
+            style={{
+              background: bg,
+              color: col,
+              padding: "3px 10px",
+              borderRadius: 30,
+            }}
+          >
+            {STATUS_LABELS[o.status]}
+          </span>
+        </span>
+      );
+    } else
+      return (
+        <>
+          <span style={{ fontSize: 12, fontWeight: 700 }}>Update status:</span>
+          <select
+            value={detail.status}
+            onChange={(e) => {
+              handleStatusChange(detail.id, e.target.value);
+              setDetail({ ...detail, status: e.target.value });
+            }}
+            style={{
+              flex: 1,
+              padding: "7px 10px",
+              border: "1px solid var(--border)",
+              borderRadius: "var(--radius-sm)",
+              fontSize: 12,
+              background: "var(--bg)",
+              outline: "none",
+            }}
+          >
+            {Object.entries(STATUS_LABELS).map(([k, v]) => (
+              <option key={k} value={k}>
+                {v}
+              </option>
+            ))}
+          </select>
+        </>
+      );
+  };
+
   return (
     <div className="animate-fade">
       <div
@@ -7283,31 +7332,7 @@ function AdminOrders() {
             </div>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <span style={{ fontSize: 12, fontWeight: 700 }}>
-              Update status:
-            </span>
-            <select
-              value={detail.status}
-              onChange={(e) => {
-                handleStatusChange(detail.id, e.target.value);
-                setDetail({ ...detail, status: e.target.value });
-              }}
-              style={{
-                flex: 1,
-                padding: "7px 10px",
-                border: "1px solid var(--border)",
-                borderRadius: "var(--radius-sm)",
-                fontSize: 12,
-                background: "var(--bg)",
-                outline: "none",
-              }}
-            >
-              {Object.entries(STATUS_LABELS).map(([k, v]) => (
-                <option key={k} value={k}>
-                  {v}
-                </option>
-              ))}
-            </select>
+            {getStatusSelect(detail)}
           </div>
         </Modal>
       )}
