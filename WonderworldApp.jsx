@@ -6797,6 +6797,7 @@ function AdminOrders() {
   const [detail, setDetail] = useState(null);
   const [allOrders, setAllOrders] = useState(state.orders);
   const [loading, setLoading] = useState(true);
+  const [expandedItems, setExpandedItems] = useState(new Set());
 
   // Re-fetch whenever search/filter changes
   useEffect(() => {
@@ -6839,6 +6840,23 @@ function AdminOrders() {
     );
   }
 
+  function formatItemsText(items) {
+    return items
+      .map(
+        (it) => `${it.productName} (${displaySize(it.size)}) x${it.quantity}`,
+      )
+      .join(", ");
+  }
+
+  function getLocationInitials(name) {
+    if (!name) return "—";
+    return name
+      .split(/[\s-]+/)
+      .filter(Boolean)
+      .map((w) => w[0].toUpperCase())
+      .join("");
+  }
+
   async function handleStatusChange(orderId, newStatus) {
     try {
       await api(`/api/admin/orders/${orderId}/status`, {
@@ -6862,6 +6880,43 @@ function AdminOrders() {
       });
     }
   }
+
+  const getItemText = (o) => {
+    const text = formatItemsText(o.items);
+    const isLong = text.length > 150;
+    const expanded = expandedItems.has(o.id);
+    const shown =
+      isLong && !expanded
+        ? text.slice(0, 150).replace(/,\s*[^,]*$/, "") + "…"
+        : text;
+
+    return (
+      <>
+        {shown}
+        {isLong && (
+          <a
+            href="#"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setExpandedItems((prev) => {
+                const next = new Set(prev);
+                next.has(o.id) ? next.delete(o.id) : next.add(o.id);
+                return next;
+              });
+            }}
+            style={{
+              marginLeft: 4,
+              color: "var(--sky-dark)",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {expanded ? "Show less" : "Show more"}
+          </a>
+        )}
+      </>
+    );
+  };
 
   const getStatusSelect = (o) => {
     if (o.status === "CANCELLED" || o.status === "PICKED_UP") {
@@ -7017,6 +7072,7 @@ function AdminOrders() {
                   "Child · Class",
                   "Parent",
                   "Location",
+                  "Items",
                   "Total",
                   "Status",
                   "Submitted",
@@ -7082,13 +7138,20 @@ function AdminOrders() {
                       style={{
                         padding: "9px 10px",
                         borderBottom: "0.5px solid var(--border)",
-                        // fontSize: 11,
                       }}
                     >
-                      {state.locations.find((l) => l.id === o.locationId)
-                        ?.name ||
-                        o.locationName ||
-                        "—"}
+                      {getLocationInitials(
+                        state.locations.find((l) => l.id === o.locationId)
+                          ?.name || o.locationName,
+                      )}
+                    </td>
+                    <td
+                      style={{
+                        padding: "9px 10px",
+                        borderBottom: "0.5px solid var(--border)",
+                      }}
+                    >
+                      {getItemText(o)}
                     </td>
                     <td
                       style={{
