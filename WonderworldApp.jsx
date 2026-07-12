@@ -193,6 +193,7 @@ import {
   createContext,
   useContext,
   useReducer,
+  useMemo,
 } from "react";
 import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import { createPortal } from "react-dom";
@@ -3084,7 +3085,14 @@ function ParentHome() {
 
                 {/* Description */}
                 {selectedProduct.description && (
-                  <p style={{ fontSize: 14, color: "#555", lineHeight: 1.6 }}>
+                  <p
+                    style={{
+                      fontSize: 14,
+                      color: "#555",
+                      lineHeight: 1.6,
+                      whiteSpace: "pre-line", // ← add
+                    }}
+                  >
                     {selectedProduct.description}
                   </p>
                 )}
@@ -6026,7 +6034,10 @@ function AdminInventory() {
     : allRows;
 
   // Collect all unique sizes (sorted) for column headers
-  const allSizes = [...new Set(filtered.map((r) => r.size))].sort();
+  const allSizes = useMemo(
+    () => sortSizes([...new Set(state.products.flatMap((p) => p.sizes || []))]),
+    [state.products],
+  );
 
   // Group by product name
   const grouped = filtered.reduce((acc, r) => {
@@ -6798,7 +6809,17 @@ function AdminOrders() {
   const [allOrders, setAllOrders] = useState(state.orders);
   const [loading, setLoading] = useState(true);
   const [expandedItems, setExpandedItems] = useState(new Set());
+  const [filterSize, setFilterSize] = useState(""); // ← add
+  const [filterCategory, setFilterCategory] = useState(""); // ← add
 
+  const allSizes = useMemo(
+    () => sortSizes([...new Set(state.products.flatMap((p) => p.sizes || []))]),
+    [state.products],
+  );
+  const allCategories = useMemo(
+    () => [...new Set(state.products.map((p) => p.category).filter(Boolean))],
+    [state.products],
+  );
   // Re-fetch whenever search/filter changes
   useEffect(() => {
     setLoading(true);
@@ -6828,7 +6849,18 @@ function AdminOrders() {
         o.orderNumber?.toLowerCase().includes(q);
       const matchStatus = !filterStatus || o.status === filterStatus;
       const matchLoc = !filterLoc || o.locationId === filterLoc;
-      return matchSearch && matchStatus && matchLoc;
+      const matchSizeAndCategory =
+        (!filterSize && !filterCategory) ||
+        o.items.some((it) => {
+          const cat = state.products.find(
+            (p) => p.id === it.productId,
+          )?.category;
+          return (
+            (!filterSize || it.size === filterSize) &&
+            (!filterCategory || cat === filterCategory)
+          );
+        });
+      return matchSearch && matchStatus && matchLoc && matchSizeAndCategory;
     })
     .sort((a, b) => a.orderNumber.localeCompare(b.orderNumber));
 
@@ -7041,6 +7073,46 @@ function AdminOrders() {
             </option>
           ))}
         </select>
+        <select // ← add
+          value={filterSize}
+          onChange={(e) => setFilterSize(e.target.value)}
+          style={{
+            padding: "8px 10px",
+            border: "1px solid var(--border)",
+            borderRadius: "var(--radius-sm)",
+            fontSize: 12,
+            background: "var(--bg)",
+            color: "var(--text)",
+            outline: "none",
+          }}
+        >
+          <option value="">All Sizes</option>
+          {allSizes.map((s) => (
+            <option key={s} value={s}>
+              {displaySize(s)}
+            </option>
+          ))}
+        </select>
+        <select
+          value={filterCategory}
+          onChange={(e) => setFilterCategory(e.target.value)}
+          style={{
+            padding: "8px 10px",
+            border: "1px solid var(--border)",
+            borderRadius: "var(--radius-sm)",
+            fontSize: 12,
+            background: "var(--bg)",
+            color: "var(--text)",
+            outline: "none",
+          }}
+        >
+          <option value="">All Categories</option>
+          {allCategories.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </select>
       </div>
       {loading ? (
         <div
@@ -7111,6 +7183,7 @@ function AdminOrders() {
                         borderBottom: "0.5px solid var(--border)",
                         fontWeight: 700,
                         color: "var(--sky-dark)",
+                        whiteSpace: "nowrap",
                       }}
                     >
                       {o.orderNumber}
@@ -7121,7 +7194,9 @@ function AdminOrders() {
                         borderBottom: "0.5px solid var(--border)",
                       }}
                     >
-                      <div style={{ fontWeight: 700 }}>{o.childName}</div>
+                      <div style={{ fontWeight: 700, whiteSpace: "nowrap" }}>
+                        {o.childName}
+                      </div>
                       <div style={{ fontSize: 10, color: "var(--text3)" }}>
                         {o.childClass}
                       </div>
