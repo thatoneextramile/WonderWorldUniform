@@ -6121,18 +6121,26 @@ function AdminInventory() {
         });
       }
     } catch (err) {
+      // Keep the editor open (with whatever the admin typed) so a
+      // validation error — e.g. "can't set total below reserved" — doesn't
+      // silently wipe their input and force them to retype it.
       dispatch({
         type: "SET_TOAST",
         message: err.message || "Failed to update",
       });
-    } finally {
       setSaving((s) => {
         const n = { ...s };
         delete n[key];
         return n;
       });
-      setEditingRow(null);
+      return;
     }
+    setSaving((s) => {
+      const n = { ...s };
+      delete n[key];
+      return n;
+    });
+    setEditingRow(null);
   }
 
   function exportCSV() {
@@ -6795,6 +6803,322 @@ function AdminInventory() {
             </div>
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+function AdminInventoryAudit() {
+  const { dispatch } = useApp();
+  const [data, setData] = useState(null); // { issues, orphans, unknownStatusOrders }
+  const [loading, setLoading] = useState(true);
+  const [fixing, setFixing] = useState(false);
+  const [confirmAction, setConfirmAction] = useState(null);
+  const windowWidth = useWindowWidth();
+  const isDesktop = windowWidth >= 1024;
+
+  async function loadAudit() {
+    setLoading(true);
+    try {
+      const result = await api("/api/admin/inventory/audit");
+      setData(result);
+    } catch (err) {
+      dispatch({
+        type: "SET_TOAST",
+        message: err.message || "Failed to load inventory audit",
+      });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadAudit();
+  }, []);
+
+  async function runFix() {
+    setFixing(true);
+    try {
+      const result = await api("/api/admin/inventory/audit/fix", {
+        method: "POST",
+      });
+      const { fixedCount, ...rest } = result;
+      setData(rest);
+      dispatch({
+        type: "SET_TOAST",
+        message: fixedCount
+          ? `Fixed ${fixedCount} inventory row${fixedCount === 1 ? "" : "s"}.`
+          : "Nothing needed fixing.",
+      });
+    } catch (err) {
+      dispatch({
+        type: "SET_TOAST",
+        message: err.message || "Failed to apply fixes",
+      });
+    } finally {
+      setFixing(false);
+    }
+  }
+
+  const issues = data?.issues || [];
+  const orphans = data?.orphans || [];
+  const unknownStatusOrders = data?.unknownStatusOrders || [];
+  const totalProblems =
+    issues.length + orphans.length + unknownStatusOrders.length;
+  const isClean = !loading && data && totalProblems === 0;
+
+  const cardStyle = {
+    background: "var(--bg)",
+    border: "1px solid var(--border)",
+    borderRadius: "var(--radius-sm)",
+    padding: isDesktop ? 16 : 12,
+    marginBottom: 10,
+  };
+
+  return (
+    <div className="animate-fade">
+      {/* Toolbar */}
+      <div
+        style={{
+          display: "flex",
+          gap: 10,
+          alignItems: "center",
+          marginBottom: 14,
+          flexWrap: "wrap",
+        }}
+      >
+        <div style={{ flex: 1, minWidth: 200 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>
+            Stock Audit
+          </div>
+          <div style={{ fontSize: 11, color: "var(--text3)", marginTop: 2 }}>
+            Recomputes reserved/sold quantities from live order data and
+            compares them against the Inventory table.
+          </div>
+        </div>
+        <Btn
+          variant="ghost"
+          size="sm"
+          onClick={loadAudit}
+          disabled={loading || fixing}
+        >
+          {loading ? "Loading…" : "🔄 Refresh"}
+        </Btn>
+        <Btn
+          variant="admin"
+          size="sm"
+          onClick={() =>
+            setConfirmAction({
+              message: `This will overwrite the "Reserved" and "Sold" numbers on ${issues.length} inventory row(s) to match what your orders actually say. Physical stock totals are never changed. Continue?`,
+              confirmLabel: "Fix reserved/sold",
+              confirmVariant: "sky",
+              onConfirm: runFix,
+            })
+          }
+          disabled={loading || fixing || issues.length === 0}
+        >
+          {fixing ? "Fixing…" : "🔧 Fix reserved/sold"}
+        </Btn>
+      </div>
+
+      {/* Info strip */}
+      <div
+        style={{
+          background: "var(--lemon)",
+          border: "1px solid var(--lemon-mid)",
+          borderRadius: "var(--radius-sm)",
+          padding: "8px 14px",
+          fontSize: 11,
+          color: "var(--lemon-dark)",
+          fontWeight: 600,
+          marginBottom: 14,
+          lineHeight: 1.6,
+        }}
+      >
+        🩺 Reserved/Sold mismatches can be auto-fixed here &nbsp;|&nbsp;
+        Negative "Available" and missing inventory rows need a manual stock
+        check
+      </div>
+
+      {loading && !data ? (
+        <div
+          style={{
+            textAlign: "center",
+            padding: 40,
+            color: "var(--text3)",
+            fontSize: 13,
+          }}
+        >
+          Loading audit…
+        </div>
+      ) : isClean ? (
+        <div
+          style={{
+            textAlign: "center",
+            padding: 40,
+            color: "var(--sky-dark)",
+            fontSize: 13,
+            fontWeight: 700,
+            background: "var(--sky)",
+            borderRadius: "var(--radius-sm)",
+            border: "1px solid var(--sky-mid)",
+          }}
+        >
+          ✅ No mismatches found. Inventory matches order state.
+        </div>
+      ) : (
+        <div>
+          {issues.length > 0 && (
+            <div style={{ marginBottom: 20 }}>
+              <div
+                style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  textTransform: "uppercase",
+                  letterSpacing: ".05em",
+                  color: "var(--text2)",
+                  marginBottom: 8,
+                }}
+              >
+                Inventory rows out of sync ({issues.length})
+              </div>
+              {issues.map((row) => (
+                <div
+                  key={row.inventoryId}
+                  style={{
+                    ...cardStyle,
+                    borderLeft: "3px solid var(--peach-dark)",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "flex-start",
+                      flexWrap: "wrap",
+                      gap: 8,
+                      marginBottom: 6,
+                    }}
+                  >
+                    <div style={{ fontSize: 13, fontWeight: 700 }}>
+                      {row.product} — {row.size}
+                    </div>
+                    <div style={{ fontSize: 11, color: "var(--text3)" }}>
+                      total={row.totalQty} reserved={row.reservedQty} sold=
+                      {row.soldQty} available=
+                      <span
+                        style={{
+                          color:
+                            row.availableQty < 0
+                              ? "var(--peach-dark)"
+                              : "inherit",
+                          fontWeight: 700,
+                        }}
+                      >
+                        {row.availableQty}
+                      </span>
+                    </div>
+                  </div>
+                  <ul style={{ margin: 0, paddingLeft: 18 }}>
+                    {row.problems.map((p, i) => (
+                      <li
+                        key={i}
+                        style={{
+                          fontSize: 12,
+                          color: "var(--text2)",
+                          lineHeight: 1.6,
+                        }}
+                      >
+                        {p}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {orphans.length > 0 && (
+            <div style={{ marginBottom: 20 }}>
+              <div
+                style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  textTransform: "uppercase",
+                  letterSpacing: ".05em",
+                  color: "var(--text2)",
+                  marginBottom: 8,
+                }}
+              >
+                Missing inventory rows ({orphans.length})
+              </div>
+              {orphans.map((o, i) => (
+                <div
+                  key={i}
+                  style={{
+                    ...cardStyle,
+                    borderLeft: "3px solid var(--lemon-dark)",
+                    fontSize: 12,
+                    color: "var(--text2)",
+                  }}
+                >
+                  <strong>
+                    {o.product} — {o.size}
+                  </strong>{" "}
+                  has active order items (reserved should be{" "}
+                  {o.expectedReserved}, sold should be {o.expectedSold}) but no
+                  matching Inventory row exists. Add this size to the product to
+                  track its stock.
+                </div>
+              ))}
+            </div>
+          )}
+
+          {unknownStatusOrders.length > 0 && (
+            <div style={{ marginBottom: 20 }}>
+              <div
+                style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  textTransform: "uppercase",
+                  letterSpacing: ".05em",
+                  color: "var(--text2)",
+                  marginBottom: 8,
+                }}
+              >
+                Orders with an unrecognized status ({unknownStatusOrders.length}
+                )
+              </div>
+              {unknownStatusOrders.map((o) => (
+                <div
+                  key={o.id}
+                  style={{
+                    ...cardStyle,
+                    borderLeft: "3px solid var(--text3)",
+                    fontSize: 12,
+                    color: "var(--text2)",
+                  }}
+                >
+                  Order <strong>{o.orderNumber}</strong> has status "{o.status}"
+                  — its items aren't counted as reserved or sold anywhere.
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {confirmAction && (
+        <ConfirmModal
+          message={confirmAction.message}
+          confirmLabel={confirmAction.confirmLabel}
+          confirmVariant={confirmAction.confirmVariant}
+          onConfirm={() => {
+            confirmAction.onConfirm();
+            setConfirmAction(null);
+          }}
+          onCancel={() => setConfirmAction(null)}
+        />
       )}
     </div>
   );
@@ -8932,6 +9256,13 @@ function AdminShell() {
       roles: null,
     },
     {
+      id: "audit",
+      label: "Stock Audit",
+      icon: "🩺",
+      section: "Products",
+      roles: ["SUPER_ADMIN", "MANAGER"],
+    },
+    {
       id: "orders",
       label: "Orders",
       icon: "📋",
@@ -9273,6 +9604,8 @@ function AdminShell() {
           {adminPage === "parents" && <AdminParents />}
           {adminPage === "products" && <AdminProducts />}
           {adminPage === "inventory" && <AdminInventory />}
+          {adminPage === "audit" &&
+            (canManage ? <AdminInventoryAudit /> : <AccessDenied />)}
           {adminPage === "orders" && <AdminOrders />}
           {adminPage === "master" &&
             (canManage ? <AdminMasterControl /> : <AccessDenied />)}

@@ -193,9 +193,11 @@ import {
   createContext,
   useContext,
   useReducer,
+  useMemo,
 } from "react";
 import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import { createPortal } from "react-dom";
+import logo from "./public/logo-1777057887021.jpg";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
 
@@ -1429,12 +1431,18 @@ function ParentLogin() {
 
   async function handleLogin() {
     if (!email || !pass) {
-      dispatch({ type: "SET_TOAST", message: "Please fill in email and password" });
+      dispatch({
+        type: "SET_TOAST",
+        message: "Please fill in email and password",
+      });
       return;
     }
     setLoginLoading(true);
     try {
-      const data = await api("/api/auth/parent/login", { method: "POST", body: { email, password: pass } });
+      const data = await api("/api/auth/parent/login", {
+        method: "POST",
+        body: { email, password: pass },
+      });
       localStorage.setItem("ww_token", data.token);
       localStorage.setItem("ww_role", "parent");
       dispatch({ type: "LOGIN", user: data.parent, role: "parent" });
@@ -1444,7 +1452,10 @@ function ParentLogin() {
         navigate("/parent");
       }
     } catch (err) {
-      dispatch({ type: "SET_TOAST", message: err.message || "Login failed. Check your email and password." });
+      dispatch({
+        type: "SET_TOAST",
+        message: err.message || "Login failed. Check your email and password.",
+      });
     } finally {
       setLoginLoading(false);
     }
@@ -1452,7 +1463,10 @@ function ParentLogin() {
 
   async function handleRegister() {
     if (!form.firstName || !form.email || !form.password) {
-      dispatch({ type: "SET_TOAST", message: "Please fill in all required fields" });
+      dispatch({
+        type: "SET_TOAST",
+        message: "Please fill in all required fields",
+      });
       return;
     }
     if (form.password !== form.confirmPassword) {
@@ -1463,17 +1477,28 @@ function ParentLogin() {
       dispatch({ type: "SET_TOAST", message: "Please add at least one child" });
       return;
     }
-    if (form.children.some((c) => !c.firstName?.trim() || !c.lastName?.trim())) {
-      dispatch({ type: "SET_TOAST", message: "Please enter a name for each child" });
+    if (
+      form.children.some((c) => !c.firstName?.trim() || !c.lastName?.trim())
+    ) {
+      dispatch({
+        type: "SET_TOAST",
+        message: "Please enter a name for each child",
+      });
       return;
     }
     if (form.children.some((c) => !c.class?.trim())) {
-      dispatch({ type: "SET_TOAST", message: "Please enter a class for each child" });
+      dispatch({
+        type: "SET_TOAST",
+        message: "Please enter a class for each child",
+      });
       return;
     }
     setLoginLoading(true);
     try {
-      const data = await api("/api/auth/parent/register", { method: "POST", body: form });
+      const data = await api("/api/auth/parent/register", {
+        method: "POST",
+        body: form,
+      });
       localStorage.setItem("ww_token", data.token);
       localStorage.setItem("ww_role", "parent");
       dispatch({ type: "LOGIN", user: data.parent, role: "parent" });
@@ -1482,7 +1507,11 @@ function ParentLogin() {
         .catch(() => {});
       dispatch({ type: "SET_PARENT_PAGE", page: "home" });
     } catch (err) {
-      dispatch({ type: "SET_TOAST", message: err.message || "Registration failed. Email may already be in use." });
+      dispatch({
+        type: "SET_TOAST",
+        message:
+          err.message || "Registration failed. Email may already be in use.",
+      });
     } finally {
       setLoginLoading(false);
     }
@@ -1490,62 +1519,103 @@ function ParentLogin() {
 
   // Shared styles matching the premium centered-card design
   const cardInputWrap = {
-    display: "flex", alignItems: "center", gap: 10,
-    background: "#eef2f7", borderRadius: 10,
-    padding: "13px 16px", border: "1.5px solid transparent",
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    background: "#eef2f7",
+    borderRadius: 10,
+    padding: "13px 16px",
+    border: "1.5px solid transparent",
     transition: "border-color .15s, background .15s",
   };
   const cardInput = {
-    flex: 1, border: "none", outline: "none", background: "none",
-    fontSize: 14, color: "#222", fontFamily: "var(--font-body)",
+    flex: 1,
+    border: "none",
+    outline: "none",
+    background: "none",
+    fontSize: 14,
+    color: "#222",
+    fontFamily: "var(--font-body)",
   };
-  const labelStyle = { fontSize: 12, fontWeight: 600, color: "#555", marginBottom: 6, display: "block" };
+  const labelStyle = {
+    fontSize: 12,
+    fontWeight: 600,
+    color: "#555",
+    marginBottom: 6,
+    display: "block",
+  };
   const plainInput = {
-    width: "100%", padding: "12px 14px",
-    border: "1.5px solid #e5e7eb", borderRadius: 8,
-    fontSize: 14, outline: "none", boxSizing: "border-box",
-    fontFamily: "var(--font-body)", background: "#fff", color: "#111",
+    width: "100%",
+    padding: "12px 14px",
+    border: "1.5px solid #e5e7eb",
+    borderRadius: 8,
+    fontSize: 14,
+    outline: "none",
+    boxSizing: "border-box",
+    fontFamily: "var(--font-body)",
+    background: "#fff",
+    color: "#111",
   };
 
   return (
-    <div style={{
-      minHeight: "100vh",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      background: "linear-gradient(150deg, #d3e8de 0%, #e7e9ec 45%, #f3ede1 100%)",
-      padding: 24,
-    }}>
-      <div className="animate-pop" style={{
-        background: "#fff",
-        borderRadius: 20,
-        padding: isReg ? "40px 36px" : "44px 40px",
-        width: "100%",
-        maxWidth: isReg ? 480 : 440,
-        boxShadow: "0 24px 60px rgba(0,0,0,.12)",
-      }}>
-
+    <div
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background:
+          "linear-gradient(150deg, #d3e8de 0%, #e7e9ec 45%, #f3ede1 100%)",
+        padding: 24,
+      }}
+    >
+      <div
+        className="animate-pop"
+        style={{
+          background: "#fff",
+          borderRadius: 20,
+          padding: isReg ? "40px 36px" : "44px 40px",
+          width: "100%",
+          maxWidth: isReg ? 480 : 440,
+          boxShadow: "0 24px 60px rgba(0,0,0,.12)",
+        }}
+      >
         {/* ── Logo + title ─────────────────────────────── */}
         <div style={{ textAlign: "center", marginBottom: 28 }}>
-          <div style={{
-            width: 120, height: 64,
-            borderRadius: 10,
-            margin: "0 auto 18px",
-            overflow: "hidden",
-            display: "flex", alignItems: "center", justifyContent: "center",
-          }}>
-            {state.settings.logoUrl ? (
-              <img src={state.settings.logoUrl} alt="Logo"
-                style={{ width: "100%", height: "100%", objectFit: "contain" }} />
-            ) : (
-              <span style={{ fontSize: 36 }}>{state.settings.logoEmoji}</span>
-            )}
+          <div
+            style={{
+              width: 120,
+              height: 64,
+              borderRadius: 10,
+              margin: "0 auto 18px",
+              overflow: "hidden",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <img
+              src={logo}
+              alt="Logo"
+              style={{ width: "100%", height: "100%", objectFit: "contain" }}
+            />
+            {/* {state.settings.logoUrl && (
+              <img
+                src={state.settings.logoUrl}
+                alt="Logo"
+                style={{ width: "100%", height: "100%", objectFit: "contain" }}
+              />
+            )} */}
           </div>
-          <h1 style={{
-            fontSize: 24, fontWeight: 800,
-            color: "#5e9483", letterSpacing: "-.01em",
-            marginBottom: 6,
-          }}>
+          <h1
+            style={{
+              fontSize: 24,
+              fontWeight: 800,
+              color: "#5e9483",
+              letterSpacing: "-.01em",
+              marginBottom: 6,
+            }}
+          >
             {state.settings.systemName}
           </h1>
           <p style={{ fontSize: 14, color: "#7a8389", margin: 0 }}>
@@ -1577,11 +1647,47 @@ function ParentLogin() {
               />
               <button
                 onClick={() => setShowPass(!showPass)}
-                style={{ background: "none", border: "none", cursor: "pointer", fontSize: 15, color: "#8a96a3", padding: 0 }}
+                style={{
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  fontSize: 15,
+                  color: "#8a96a3",
+                  padding: 0,
+                }}
                 type="button"
                 aria-label="Toggle password visibility"
               >
-                {showPass ? "🙈" : "👁"}
+                {showPass ? (
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+                    <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+                    <line x1="1" y1="1" x2="23" y2="23" />
+                  </svg>
+                ) : (
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                )}
               </button>
             </div>
 
@@ -1589,22 +1695,37 @@ function ParentLogin() {
               onClick={handleLogin}
               disabled={loginLoading}
               style={{
-                width: "100%", padding: "14px",
+                width: "100%",
+                padding: "14px",
                 background: loginLoading ? "#a9c4ba" : "#6fa595",
-                color: "#fff", border: "none", borderRadius: 10,
-                fontSize: 15, fontWeight: 700,
+                color: "#fff",
+                border: "none",
+                borderRadius: 10,
+                fontSize: 15,
+                fontWeight: 700,
                 cursor: loginLoading ? "not-allowed" : "pointer",
                 marginTop: 6,
                 fontFamily: "var(--font-body)",
                 transition: "background .15s",
               }}
-              onMouseEnter={(e) => { if (!loginLoading) e.currentTarget.style.background = "#5e9483"; }}
-              onMouseLeave={(e) => { if (!loginLoading) e.currentTarget.style.background = "#6fa595"; }}
+              onMouseEnter={(e) => {
+                if (!loginLoading) e.currentTarget.style.background = "#5e9483";
+              }}
+              onMouseLeave={(e) => {
+                if (!loginLoading) e.currentTarget.style.background = "#6fa595";
+              }}
             >
               {loginLoading ? "Signing in…" : "Sign In"}
             </button>
 
-            <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "6px 0" }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                margin: "6px 0",
+              }}
+            >
               <div style={{ flex: 1, height: 1, background: "#e9ecef" }} />
               <span style={{ fontSize: 12, color: "#aab2b9" }}>or</span>
               <div style={{ flex: 1, height: 1, background: "#e9ecef" }} />
@@ -1613,138 +1734,257 @@ function ParentLogin() {
             <button
               onClick={() => setIsReg(true)}
               style={{
-                width: "100%", padding: "13px",
-                background: "#fff", color: "#5e9483",
-                border: "1.5px solid #cfe2da", borderRadius: 10,
-                fontSize: 14, fontWeight: 700,
-                cursor: "pointer", fontFamily: "var(--font-body)",
+                width: "100%",
+                padding: "13px",
+                background: "#fff",
+                color: "#5e9483",
+                border: "1.5px solid #cfe2da",
+                borderRadius: 10,
+                fontSize: 14,
+                fontWeight: 700,
+                cursor: "pointer",
+                fontFamily: "var(--font-body)",
               }}
             >
               Create an account
             </button>
 
-            <p style={{ fontSize: 12, color: "#9aa2a8", textAlign: "center", marginTop: 6 }}>
+            <p
+              style={{
+                fontSize: 12,
+                color: "#9aa2a8",
+                textAlign: "center",
+                marginTop: 6,
+              }}
+            >
               Forgot your password? Contact us at{" "}
-              <a href="mailto:info@wonderworldmontessori.ca"
-                style={{ color: "#5e9483", fontWeight: 600, textDecoration: "none" }}>
+              <a
+                href="mailto:info@wonderworldmontessori.ca"
+                style={{
+                  color: "#5e9483",
+                  fontWeight: 600,
+                  textDecoration: "none",
+                }}
+              >
                 info@wonderworldmontessori.ca
               </a>
             </p>
           </div>
-
         ) : (
           /* ── Register form ─────────────────────────── */
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: 12,
+              }}
+            >
               <div>
                 <label style={labelStyle}>First Name *</label>
-                <input value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })}
-                  placeholder="Jane" style={plainInput}
-                  onFocus={(e) => e.target.style.borderColor = "#6fa595"}
-                  onBlur={(e) => e.target.style.borderColor = "#e5e7eb"}
+                <input
+                  value={form.firstName}
+                  onChange={(e) =>
+                    setForm({ ...form, firstName: e.target.value })
+                  }
+                  placeholder="Jane"
+                  style={plainInput}
+                  onFocus={(e) => (e.target.style.borderColor = "#6fa595")}
+                  onBlur={(e) => (e.target.style.borderColor = "#e5e7eb")}
                 />
               </div>
               <div>
                 <label style={labelStyle}>Last Name</label>
-                <input value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })}
-                  placeholder="Smith" style={plainInput}
-                  onFocus={(e) => e.target.style.borderColor = "#6fa595"}
-                  onBlur={(e) => e.target.style.borderColor = "#e5e7eb"}
+                <input
+                  value={form.lastName}
+                  onChange={(e) =>
+                    setForm({ ...form, lastName: e.target.value })
+                  }
+                  placeholder="Smith"
+                  style={plainInput}
+                  onFocus={(e) => (e.target.style.borderColor = "#6fa595")}
+                  onBlur={(e) => (e.target.style.borderColor = "#e5e7eb")}
                 />
               </div>
             </div>
 
             <div>
               <label style={labelStyle}>Email address *</label>
-              <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })}
-                placeholder="parent@email.com" style={plainInput}
-                onFocus={(e) => e.target.style.borderColor = "#6fa595"}
-                onBlur={(e) => e.target.style.borderColor = "#e5e7eb"}
+              <input
+                type="email"
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+                placeholder="parent@email.com"
+                style={plainInput}
+                onFocus={(e) => (e.target.style.borderColor = "#6fa595")}
+                onBlur={(e) => (e.target.style.borderColor = "#e5e7eb")}
               />
             </div>
 
             <div>
               <label style={labelStyle}>Phone</label>
-              <input type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                placeholder="123-456-7890" style={plainInput}
-                onFocus={(e) => e.target.style.borderColor = "#6fa595"}
-                onBlur={(e) => e.target.style.borderColor = "#e5e7eb"}
+              <input
+                type="tel"
+                value={form.phone}
+                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                placeholder="123-456-7890"
+                style={plainInput}
+                onFocus={(e) => (e.target.style.borderColor = "#6fa595")}
+                onBlur={(e) => (e.target.style.borderColor = "#e5e7eb")}
               />
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: 12,
+              }}
+            >
               <div>
                 <label style={labelStyle}>Password *</label>
-                <input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })}
-                  placeholder="Create a password" style={plainInput}
-                  onFocus={(e) => e.target.style.borderColor = "#6fa595"}
-                  onBlur={(e) => e.target.style.borderColor = "#e5e7eb"}
+                <input
+                  type="password"
+                  value={form.password}
+                  onChange={(e) =>
+                    setForm({ ...form, password: e.target.value })
+                  }
+                  placeholder="Create a password"
+                  style={plainInput}
+                  onFocus={(e) => (e.target.style.borderColor = "#6fa595")}
+                  onBlur={(e) => (e.target.style.borderColor = "#e5e7eb")}
                 />
               </div>
               <div>
                 <label style={labelStyle}>Re-enter Password *</label>
-                <input type="password" value={form.confirmPassword} onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
-                  placeholder="••••••••" style={plainInput}
-                  onFocus={(e) => e.target.style.borderColor = "#6fa595"}
-                  onBlur={(e) => e.target.style.borderColor = "#e5e7eb"}
+                <input
+                  type="password"
+                  value={form.confirmPassword}
+                  onChange={(e) =>
+                    setForm({ ...form, confirmPassword: e.target.value })
+                  }
+                  placeholder="••••••••"
+                  style={plainInput}
+                  onFocus={(e) => (e.target.style.borderColor = "#6fa595")}
+                  onBlur={(e) => (e.target.style.borderColor = "#e5e7eb")}
                 />
               </div>
             </div>
 
             <div>
               <div style={{ marginBottom: 12 }}>
-                <label style={{ ...labelStyle, fontSize: 13, color: "#111" }}>Children</label>
-                <span style={{ fontSize: 12, color: "#888" }}>At least one child is required</span>
+                <label style={{ ...labelStyle, fontSize: 13, color: "#111" }}>
+                  Children
+                </label>
+                <span style={{ fontSize: 12, color: "#888" }}>
+                  At least one child is required
+                </span>
               </div>
               {form.children.map((child, i) => (
-                <div key={i} style={{
-                  background: "#f9fafb", border: "1.5px solid #e5e7eb",
-                  borderRadius: 10, padding: "14px 16px", marginBottom: 10,
-                }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: "#555", letterSpacing: ".04em", textTransform: "uppercase" }}>
+                <div
+                  key={i}
+                  style={{
+                    background: "#f9fafb",
+                    border: "1.5px solid #e5e7eb",
+                    borderRadius: 10,
+                    padding: "14px 16px",
+                    marginBottom: 10,
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginBottom: 10,
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 700,
+                        color: "#555",
+                        letterSpacing: ".04em",
+                        textTransform: "uppercase",
+                      }}
+                    >
                       Child {form.children.length > 1 ? i + 1 : ""}
                     </span>
                     {form.children.length > 1 && (
-                      <button onClick={() => setForm({ ...form, children: form.children.filter((_, j) => j !== i) })}
-                        style={{ background: "none", border: "none", color: "#f87171", cursor: "pointer", fontSize: 13, fontWeight: 600, padding: 0 }}>
+                      <button
+                        onClick={() =>
+                          setForm({
+                            ...form,
+                            children: form.children.filter((_, j) => j !== i),
+                          })
+                        }
+                        style={{
+                          background: "none",
+                          border: "none",
+                          color: "#f87171",
+                          cursor: "pointer",
+                          fontSize: 13,
+                          fontWeight: 600,
+                          padding: 0,
+                        }}
+                      >
                         Remove
                       </button>
                     )}
                   </div>
-                  <div style={{ display: "grid", gridTemplateColumns: isDesktop ? "1fr 1fr" : "1fr", gap: 10, marginBottom: 10 }}>
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: isDesktop ? "1fr 1fr" : "1fr",
+                      gap: 10,
+                      marginBottom: 10,
+                    }}
+                  >
                     <div>
                       <label style={labelStyle}>First Name *</label>
-                      <input placeholder="Child's first name"
+                      <input
+                        placeholder="Child's first name"
                         value={child.firstName || ""}
                         onChange={(e) => {
                           const updated = [...form.children];
-                          updated[i] = { ...updated[i], firstName: e.target.value };
+                          updated[i] = {
+                            ...updated[i],
+                            firstName: e.target.value,
+                          };
                           setForm({ ...form, children: updated });
                         }}
                         style={plainInput}
-                        onFocus={(e) => e.target.style.borderColor = "#6fa595"}
-                        onBlur={(e) => e.target.style.borderColor = "#e5e7eb"}
+                        onFocus={(e) =>
+                          (e.target.style.borderColor = "#6fa595")
+                        }
+                        onBlur={(e) => (e.target.style.borderColor = "#e5e7eb")}
                       />
                     </div>
                     <div>
                       <label style={labelStyle}>Last Name *</label>
-                      <input placeholder="Child's last name"
+                      <input
+                        placeholder="Child's last name"
                         value={child.lastName || ""}
                         onChange={(e) => {
                           const updated = [...form.children];
-                          updated[i] = { ...updated[i], lastName: e.target.value };
+                          updated[i] = {
+                            ...updated[i],
+                            lastName: e.target.value,
+                          };
                           setForm({ ...form, children: updated });
                         }}
                         style={plainInput}
-                        onFocus={(e) => e.target.style.borderColor = "#6fa595"}
-                        onBlur={(e) => e.target.style.borderColor = "#e5e7eb"}
+                        onFocus={(e) =>
+                          (e.target.style.borderColor = "#6fa595")
+                        }
+                        onBlur={(e) => (e.target.style.borderColor = "#e5e7eb")}
                       />
                     </div>
                   </div>
                   <div>
                     <label style={labelStyle}>Class *</label>
-                    <input placeholder="e.g. K1, Grade 2"
+                    <input
+                      placeholder="e.g. K1, Grade 2"
                       value={child.class || ""}
                       onChange={(e) => {
                         const updated = [...form.children];
@@ -1752,19 +1992,33 @@ function ParentLogin() {
                         setForm({ ...form, children: updated });
                       }}
                       style={plainInput}
-                      onFocus={(e) => e.target.style.borderColor = "#6fa595"}
-                      onBlur={(e) => e.target.style.borderColor = "#e5e7eb"}
+                      onFocus={(e) => (e.target.style.borderColor = "#6fa595")}
+                      onBlur={(e) => (e.target.style.borderColor = "#e5e7eb")}
                     />
                   </div>
                 </div>
               ))}
               <button
-                onClick={() => setForm({ ...form, children: [...form.children, { firstName: "", lastName: "", class: "" }] })}
+                onClick={() =>
+                  setForm({
+                    ...form,
+                    children: [
+                      ...form.children,
+                      { firstName: "", lastName: "", class: "" },
+                    ],
+                  })
+                }
                 style={{
-                  width: "100%", fontSize: 13, color: "#5e9483",
-                  background: "#eef6f2", border: "1.5px dashed #b9d9cb",
-                  borderRadius: 8, cursor: "pointer", fontWeight: 600,
-                  padding: "10px 16px", fontFamily: "var(--font-body)",
+                  width: "100%",
+                  fontSize: 13,
+                  color: "#5e9483",
+                  background: "#eef6f2",
+                  border: "1.5px dashed #b9d9cb",
+                  borderRadius: 8,
+                  cursor: "pointer",
+                  fontWeight: 600,
+                  padding: "10px 16px",
+                  fontFamily: "var(--font-body)",
                 }}
               >
                 + Add another child
@@ -1775,16 +2029,25 @@ function ParentLogin() {
               onClick={handleRegister}
               disabled={loginLoading}
               style={{
-                width: "100%", padding: "14px",
+                width: "100%",
+                padding: "14px",
                 background: loginLoading ? "#a9c4ba" : "#6fa595",
-                color: "#fff", border: "none", borderRadius: 10,
-                fontSize: 15, fontWeight: 700,
+                color: "#fff",
+                border: "none",
+                borderRadius: 10,
+                fontSize: 15,
+                fontWeight: 700,
                 cursor: loginLoading ? "not-allowed" : "pointer",
-                marginTop: 4, fontFamily: "var(--font-body)",
+                marginTop: 4,
+                fontFamily: "var(--font-body)",
                 transition: "background .15s",
               }}
-              onMouseEnter={(e) => { if (!loginLoading) e.currentTarget.style.background = "#5e9483"; }}
-              onMouseLeave={(e) => { if (!loginLoading) e.currentTarget.style.background = "#6fa595"; }}
+              onMouseEnter={(e) => {
+                if (!loginLoading) e.currentTarget.style.background = "#5e9483";
+              }}
+              onMouseLeave={(e) => {
+                if (!loginLoading) e.currentTarget.style.background = "#6fa595";
+              }}
             >
               {loginLoading ? "Creating account…" : "Create Account"}
             </button>
@@ -1793,7 +2056,15 @@ function ParentLogin() {
               Already registered?{" "}
               <button
                 onClick={() => setIsReg(false)}
-                style={{ background: "none", border: "none", color: "#5e9483", fontWeight: 700, cursor: "pointer", fontSize: 13, fontFamily: "var(--font-body)" }}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "#5e9483",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  fontSize: 13,
+                  fontFamily: "var(--font-body)",
+                }}
               >
                 Sign in
               </button>
@@ -2313,9 +2584,18 @@ function ParentHome() {
   // Products come from initAppData via SET_INITIAL_DATA.
   // Show a loading message until at least one product arrives.
   const productsLoaded = state.products.length > 0;
-  const filtered = state.products.filter(
-    (p) => p.isActive && (cat === "All Items" || p.category === cat),
-  );
+  const filtered = state.products
+    .filter((p) => p.isActive && (cat === "All Items" || p.category === cat))
+    .sort((a, b) => {
+      if (cat !== "All Items") return a.name.localeCompare(b.name);
+      const ai = cats.indexOf(a.category ?? "");
+      const bi = cats.indexOf(b.category ?? "");
+      const catDiff = (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+      return catDiff !== 0 ? catDiff : a.name.localeCompare(b.name);
+    });
+  // const filtered = state.products
+  //   .filter((p) => p.isActive && (cat === "All Items" || p.category === cat))
+  //   .sort((a, b) => a.name.localeCompare(b.name));
   const orderStockThreshold = state.settings.orderStockThreshold ?? 0;
 
   // Set of "productId-size" keys that are blocked
@@ -2526,7 +2806,7 @@ function ParentHome() {
               {/* Image */}
               <div
                 style={{
-                  aspectRatio: "3/4",
+                  aspectRatio: "4/5",
                   overflow: "hidden",
                   borderRadius: 10,
                   background: "#f3f4f6",
@@ -2805,7 +3085,14 @@ function ParentHome() {
 
                 {/* Description */}
                 {selectedProduct.description && (
-                  <p style={{ fontSize: 14, color: "#555", lineHeight: 1.6 }}>
+                  <p
+                    style={{
+                      fontSize: 14,
+                      color: "#555",
+                      lineHeight: 1.6,
+                      whiteSpace: "pre-line", // ← add
+                    }}
+                  >
                     {selectedProduct.description}
                   </p>
                 )}
@@ -4638,7 +4925,7 @@ function ParentShell() {
       >
         <div
           style={{
-            maxWidth: 1280,
+            maxWidth: 1920,
             margin: "0 auto",
             padding: isDesktop ? "0 48px" : "0 16px",
             height: 64,
@@ -4863,7 +5150,7 @@ function ParentShell() {
       <main
         style={{
           flex: 1,
-          maxWidth: 1280,
+          maxWidth: 1920,
           margin: "0 auto",
           width: "100%",
           padding: isDesktop ? "40px 48px" : "20px 16px 32px",
@@ -5326,211 +5613,213 @@ function AdminProducts() {
             </tr>
           </thead>
           <tbody className="txt-base">
-            {state.products.map((p) => (
-              <tr key={p.id} style={{ transition: "background .15s" }}>
-                <td
-                  style={{
-                    padding: "10px 10px",
-                    borderBottom: "0.5px solid var(--border)",
-                  }}
-                >
-                  <div
-                    style={{ display: "flex", alignItems: "center", gap: 8 }}
+            {[...state.products]
+              .sort((a, b) => a.name.localeCompare(b.name))
+              .map((p) => (
+                <tr key={p.id} style={{ transition: "background .15s" }}>
+                  <td
+                    style={{
+                      padding: "10px 10px",
+                      borderBottom: "0.5px solid var(--border)",
+                    }}
                   >
                     <div
-                      style={{
-                        width: 32,
-                        height: 32,
-                        borderRadius: 6,
-                        overflow: "hidden",
-                        flexShrink: 0,
-                      }}
+                      style={{ display: "flex", alignItems: "center", gap: 8 }}
                     >
-                      {p.images && p.images.length > 0 ? (
-                        <img
-                          src={p.images[0]}
-                          alt=""
-                          style={{
-                            width: "100%",
-                            height: "100%",
-                            objectFit: "contain",
-                          }}
-                        />
-                      ) : (
-                        <div
-                          style={{
-                            width: 32,
-                            height: 32,
-                            background: p.imageBg,
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            fontSize: 16,
-                          }}
-                        >
-                          {p.imageEmoji}
-                        </div>
-                      )}
-                    </div>
-                    <div>
-                      <div style={{ fontWeight: 700 }}>{p.name}</div>
-                      <div style={{ fontSize: 10, color: "var(--text3)" }}>
-                        {p.category}
-                      </div>
-                    </div>
-                  </div>
-                </td>
-                <td
-                  style={{
-                    padding: "10px 10px",
-                    borderBottom: "0.5px solid var(--border)",
-                    fontWeight: 700,
-                    color: "#2a7a4e",
-                  }}
-                >
-                  ${p.sellingPrice}
-                </td>
-                {isSuperAdmin && (
-                  <td
-                    style={{
-                      padding: "10px 10px",
-                      borderBottom: "0.5px solid var(--border)",
-                      fontWeight: 700,
-                      color: "var(--peach-dark)",
-                    }}
-                  >
-                    ${p.costPrice}
-                  </td>
-                )}
-                {isSuperAdmin && (
-                  <td
-                    style={{
-                      padding: "10px 10px",
-                      borderBottom: "0.5px solid var(--border)",
-                      fontWeight: 700,
-                      color: "#1a5c47",
-                    }}
-                  >
-                    ${(p.sellingPrice - p.costPrice).toFixed(2)}
-                  </td>
-                )}
-
-                <td
-                  style={{
-                    padding: "10px 10px",
-                    borderBottom: "0.5px solid var(--border)",
-                  }}
-                >
-                  <div style={{ display: "flex", gap: 3, flexWrap: "wrap" }}>
-                    {sortSizes(p.sizes).map((s) => (
-                      <span
-                        key={s}
+                      <div
                         style={{
-                          background: "var(--bg3)",
-                          border: "0.5px solid var(--border)",
-                          borderRadius: 4,
-                          fontSize: 9,
-                          fontWeight: 700,
-                          padding: "2px 5px",
+                          width: 32,
+                          height: 32,
+                          borderRadius: 6,
+                          overflow: "hidden",
+                          flexShrink: 0,
                         }}
                       >
-                        {displaySize(s)}
-                      </span>
-                    ))}
-                  </div>
-                </td>
-                <td
-                  style={{
-                    padding: "10px 10px",
-                    borderBottom: "0.5px solid var(--border)",
-                  }}
-                >
-                  <Toggle
-                    checked={p.isActive}
-                    onChange={async (v) => {
-                      try {
-                        await api(`/api/admin/products/${p.id}`, {
-                          method: "PUT",
-                          body: { isActive: v },
-                        });
-                        dispatch({
-                          type: "UPDATE_PRODUCT",
-                          product: { ...p, isActive: v },
-                        });
-                      } catch (err) {
-                        dispatch({
-                          type: "SET_TOAST",
-                          message: err.message || "Failed to update product",
-                        });
-                      }
+                        {p.images && p.images.length > 0 ? (
+                          <img
+                            src={p.images[0]}
+                            alt=""
+                            style={{
+                              width: "100%",
+                              height: "100%",
+                              objectFit: "contain",
+                            }}
+                          />
+                        ) : (
+                          <div
+                            style={{
+                              width: 32,
+                              height: 32,
+                              background: p.imageBg,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              fontSize: 16,
+                            }}
+                          >
+                            {p.imageEmoji}
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 700 }}>{p.name}</div>
+                        <div style={{ fontSize: 10, color: "var(--text3)" }}>
+                          {p.category}
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                  <td
+                    style={{
+                      padding: "10px 10px",
+                      borderBottom: "0.5px solid var(--border)",
+                      fontWeight: 700,
+                      color: "#2a7a4e",
                     }}
-                  />
-                </td>
-                <td
-                  style={{
-                    padding: "10px 10px",
-                    borderBottom: "0.5px solid var(--border)",
-                  }}
-                >
-                  <div style={{ display: "flex", gap: 4 }}>
-                    <button
-                      onClick={() => openEdit(p)}
+                  >
+                    ${p.sellingPrice}
+                  </td>
+                  {isSuperAdmin && (
+                    <td
                       style={{
-                        padding: "4px 10px",
-                        borderRadius: 5,
-                        border: "none",
-                        background: "#dce6f0",
-                        color: "#1a3f6e",
-                        fontSize: 11,
+                        padding: "10px 10px",
+                        borderBottom: "0.5px solid var(--border)",
                         fontWeight: 700,
-                        cursor: "pointer",
-                      }}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() =>
-                        setConfirmAction({
-                          message: `Delete "${p.name}"? This cannot be undone.`,
-                          confirmLabel: "Delete",
-                          confirmVariant: "peach",
-                          onConfirm: async () => {
-                            try {
-                              await api(`/api/admin/products/${p.id}`, {
-                                method: "DELETE",
-                              });
-                              dispatch({ type: "DELETE_PRODUCT", id: p.id });
-                              dispatch({
-                                type: "SET_TOAST",
-                                message: "Product deleted",
-                              });
-                            } catch (err) {
-                              dispatch({
-                                type: "SET_TOAST",
-                                message:
-                                  err.message || "Failed to delete product",
-                              });
-                            }
-                          },
-                        })
-                      }
-                      style={{
-                        padding: "4px 10px",
-                        borderRadius: 5,
-                        border: "none",
-                        background: "var(--peach)",
                         color: "var(--peach-dark)",
-                        fontSize: 11,
-                        fontWeight: 700,
-                        cursor: "pointer",
                       }}
                     >
-                      Delete
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+                      ${p.costPrice}
+                    </td>
+                  )}
+                  {isSuperAdmin && (
+                    <td
+                      style={{
+                        padding: "10px 10px",
+                        borderBottom: "0.5px solid var(--border)",
+                        fontWeight: 700,
+                        color: "#1a5c47",
+                      }}
+                    >
+                      ${(p.sellingPrice - p.costPrice).toFixed(2)}
+                    </td>
+                  )}
+
+                  <td
+                    style={{
+                      padding: "10px 10px",
+                      borderBottom: "0.5px solid var(--border)",
+                    }}
+                  >
+                    <div style={{ display: "flex", gap: 3, flexWrap: "wrap" }}>
+                      {sortSizes(p.sizes).map((s) => (
+                        <span
+                          key={s}
+                          style={{
+                            background: "var(--bg3)",
+                            border: "0.5px solid var(--border)",
+                            borderRadius: 4,
+                            fontSize: 9,
+                            fontWeight: 700,
+                            padding: "2px 5px",
+                          }}
+                        >
+                          {displaySize(s)}
+                        </span>
+                      ))}
+                    </div>
+                  </td>
+                  <td
+                    style={{
+                      padding: "10px 10px",
+                      borderBottom: "0.5px solid var(--border)",
+                    }}
+                  >
+                    <Toggle
+                      checked={p.isActive}
+                      onChange={async (v) => {
+                        try {
+                          await api(`/api/admin/products/${p.id}`, {
+                            method: "PUT",
+                            body: { isActive: v },
+                          });
+                          dispatch({
+                            type: "UPDATE_PRODUCT",
+                            product: { ...p, isActive: v },
+                          });
+                        } catch (err) {
+                          dispatch({
+                            type: "SET_TOAST",
+                            message: err.message || "Failed to update product",
+                          });
+                        }
+                      }}
+                    />
+                  </td>
+                  <td
+                    style={{
+                      padding: "10px 10px",
+                      borderBottom: "0.5px solid var(--border)",
+                    }}
+                  >
+                    <div style={{ display: "flex", gap: 4 }}>
+                      <button
+                        onClick={() => openEdit(p)}
+                        style={{
+                          padding: "4px 10px",
+                          borderRadius: 5,
+                          border: "none",
+                          background: "#dce6f0",
+                          color: "#1a3f6e",
+                          fontSize: 11,
+                          fontWeight: 700,
+                          cursor: "pointer",
+                        }}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() =>
+                          setConfirmAction({
+                            message: `Delete "${p.name}"? This cannot be undone.`,
+                            confirmLabel: "Delete",
+                            confirmVariant: "peach",
+                            onConfirm: async () => {
+                              try {
+                                await api(`/api/admin/products/${p.id}`, {
+                                  method: "DELETE",
+                                });
+                                dispatch({ type: "DELETE_PRODUCT", id: p.id });
+                                dispatch({
+                                  type: "SET_TOAST",
+                                  message: "Product deleted",
+                                });
+                              } catch (err) {
+                                dispatch({
+                                  type: "SET_TOAST",
+                                  message:
+                                    err.message || "Failed to delete product",
+                                });
+                              }
+                            },
+                          })
+                        }
+                        style={{
+                          padding: "4px 10px",
+                          borderRadius: 5,
+                          border: "none",
+                          background: "var(--peach)",
+                          color: "var(--peach-dark)",
+                          fontSize: 11,
+                          fontWeight: 700,
+                          cursor: "pointer",
+                        }}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
           </tbody>
         </table>
       </div>
@@ -5709,6 +5998,8 @@ function AdminInventory() {
   const [apiRows, setApiRows] = useState(null);
   const [saving, setSaving] = useState({});
   const [editingRow, setEditingRow] = useState(null); // { invId, field: "total"|"sold", value
+  const windowWidth = useWindowWidth();
+  const isDesktop = windowWidth >= 1024;
 
   useEffect(() => {
     api("/api/admin/inventory")
@@ -5743,7 +6034,10 @@ function AdminInventory() {
     : allRows;
 
   // Collect all unique sizes (sorted) for column headers
-  const allSizes = [...new Set(filtered.map((r) => r.size))].sort();
+  const allSizes = useMemo(
+    () => sortSizes([...new Set(state.products.flatMap((p) => p.sizes || []))]),
+    [state.products],
+  );
 
   // Group by product name
   const grouped = filtered.reduce((acc, r) => {
@@ -5827,18 +6121,26 @@ function AdminInventory() {
         });
       }
     } catch (err) {
+      // Keep the editor open (with whatever the admin typed) so a
+      // validation error — e.g. "can't set total below reserved" — doesn't
+      // silently wipe their input and force them to retype it.
       dispatch({
         type: "SET_TOAST",
         message: err.message || "Failed to update",
       });
-    } finally {
       setSaving((s) => {
         const n = { ...s };
         delete n[key];
         return n;
       });
-      setEditingRow(null);
+      return;
     }
+    setSaving((s) => {
+      const n = { ...s };
+      delete n[key];
+      return n;
+    });
+    setEditingRow(null);
   }
 
   function exportCSV() {
@@ -5871,7 +6173,13 @@ function AdminInventory() {
           flexWrap: "wrap",
         }}
       >
-        <div style={{ position: "relative", flex: 1, minWidth: 160 }}>
+        <div
+          style={{
+            position: "relative",
+            flex: 1,
+            minWidth: isDesktop ? 160 : 120,
+          }}
+        >
           <span
             style={{
               position: "absolute",
@@ -5937,9 +6245,24 @@ function AdminInventory() {
           {apiRows === null ? "Loading inventory…" : "No inventory found."}
         </div>
       ) : (
-        <div style={{ display: "flex", gap: 20, alignItems: "flex-start" }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: isDesktop ? "row" : "column",
+            gap: isDesktop ? 20 : 14,
+            alignItems: isDesktop ? "flex-start" : "stretch",
+          }}
+        >
           {/* Main table */}
-          <div style={{ overflowX: "auto", flex: 1 }}>
+          <div
+            style={{
+              overflowX: "auto",
+              overflowY: "auto",
+              maxHeight: "70vh",
+              flex: 1,
+              WebkitOverflowScrolling: "touch",
+            }}
+          >
             <table
               style={{
                 borderCollapse: "collapse",
@@ -5956,12 +6279,13 @@ function AdminInventory() {
                   <th
                     className="txt-th"
                     style={{
-                      padding: "12px 16px",
+                      padding: isDesktop ? "12px 16px" : "10px 12px",
                       textAlign: "left",
                       color: "var(--text)",
-                      minWidth: 180,
+                      minWidth: isDesktop ? 180 : 140,
                       position: "sticky",
                       left: 0,
+                      top: 0,
                       background: "var(--bg2)",
                       zIndex: 2,
                       borderBottom: "2px solid var(--border)",
@@ -5976,12 +6300,16 @@ function AdminInventory() {
                       className="txt-th"
                       key={size}
                       style={{
-                        padding: "12px 16px",
+                        padding: isDesktop ? "12px 16px" : "10px 12px",
                         textAlign: "center",
                         color: "var(--sky-dark)",
-                        minWidth: 150,
+                        minWidth: isDesktop ? 150 : 128,
                         borderBottom: "2px solid var(--border)",
                         borderRight: "1px solid var(--border)",
+                        position: "sticky",
+                        top: 0,
+                        background: "var(--bg2)",
+                        zIndex: 2,
                       }}
                     >
                       {displaySize(size)}
@@ -6009,7 +6337,7 @@ function AdminInventory() {
                       <td
                         className="txt-base"
                         style={{
-                          padding: "16px",
+                          padding: isDesktop ? "16px" : "10px 12px",
                           borderBottom: "1px solid var(--border)",
                           borderRight: "2px solid var(--border)",
                           position: "sticky",
@@ -6070,7 +6398,7 @@ function AdminInventory() {
                             <td
                               key={size}
                               style={{
-                                padding: "16px",
+                                padding: isDesktop ? "16px" : "10px 12px",
                                 textAlign: "center",
                                 borderBottom: "1px solid var(--border)",
                                 borderRight: "1px solid var(--border)",
@@ -6087,7 +6415,7 @@ function AdminInventory() {
                           <td
                             key={size}
                             style={{
-                              padding: "12px 16px",
+                              padding: isDesktop ? "12px 16px" : "8px 10px",
                               borderBottom: "1px solid var(--border)",
                               borderRight: "1px solid var(--border)",
                               verticalAlign: "top",
@@ -6347,10 +6675,11 @@ function AdminInventory() {
           {/* Matrix Guide sidebar — matches screenshot */}
           <div
             style={{
-              width: 180,
+              width: isDesktop ? 180 : "100%",
               flexShrink: 0,
               display: "flex",
-              flexDirection: "column",
+              flexDirection: isDesktop ? "column" : "row",
+              flexWrap: "wrap",
               gap: 12,
             }}
           >
@@ -6360,6 +6689,8 @@ function AdminInventory() {
                 border: "1px solid var(--border)",
                 borderRadius: "var(--radius-sm)",
                 padding: "14px 16px",
+                flex: isDesktop ? "none" : "1 1 240px",
+                minWidth: isDesktop ? "auto" : 240,
               }}
             >
               <div
@@ -6436,6 +6767,8 @@ function AdminInventory() {
                 border: "1px solid var(--lemon-mid)",
                 borderRadius: "var(--radius-sm)",
                 padding: "14px 16px",
+                flex: isDesktop ? "none" : "1 1 240px",
+                minWidth: isDesktop ? "auto" : 240,
               }}
             >
               <div
@@ -6475,6 +6808,322 @@ function AdminInventory() {
   );
 }
 
+function AdminInventoryAudit() {
+  const { dispatch } = useApp();
+  const [data, setData] = useState(null); // { issues, orphans, unknownStatusOrders }
+  const [loading, setLoading] = useState(true);
+  const [fixing, setFixing] = useState(false);
+  const [confirmAction, setConfirmAction] = useState(null);
+  const windowWidth = useWindowWidth();
+  const isDesktop = windowWidth >= 1024;
+
+  async function loadAudit() {
+    setLoading(true);
+    try {
+      const result = await api("/api/admin/inventory/audit");
+      setData(result);
+    } catch (err) {
+      dispatch({
+        type: "SET_TOAST",
+        message: err.message || "Failed to load inventory audit",
+      });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadAudit();
+  }, []);
+
+  async function runFix() {
+    setFixing(true);
+    try {
+      const result = await api("/api/admin/inventory/audit/fix", {
+        method: "POST",
+      });
+      const { fixedCount, ...rest } = result;
+      setData(rest);
+      dispatch({
+        type: "SET_TOAST",
+        message: fixedCount
+          ? `Fixed ${fixedCount} inventory row${fixedCount === 1 ? "" : "s"}.`
+          : "Nothing needed fixing.",
+      });
+    } catch (err) {
+      dispatch({
+        type: "SET_TOAST",
+        message: err.message || "Failed to apply fixes",
+      });
+    } finally {
+      setFixing(false);
+    }
+  }
+
+  const issues = data?.issues || [];
+  const orphans = data?.orphans || [];
+  const unknownStatusOrders = data?.unknownStatusOrders || [];
+  const totalProblems =
+    issues.length + orphans.length + unknownStatusOrders.length;
+  const isClean = !loading && data && totalProblems === 0;
+
+  const cardStyle = {
+    background: "var(--bg)",
+    border: "1px solid var(--border)",
+    borderRadius: "var(--radius-sm)",
+    padding: isDesktop ? 16 : 12,
+    marginBottom: 10,
+  };
+
+  return (
+    <div className="animate-fade">
+      {/* Toolbar */}
+      <div
+        style={{
+          display: "flex",
+          gap: 10,
+          alignItems: "center",
+          marginBottom: 14,
+          flexWrap: "wrap",
+        }}
+      >
+        <div style={{ flex: 1, minWidth: 200 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>
+            Stock Audit
+          </div>
+          <div style={{ fontSize: 11, color: "var(--text3)", marginTop: 2 }}>
+            Recomputes reserved/sold quantities from live order data and
+            compares them against the Inventory table.
+          </div>
+        </div>
+        <Btn
+          variant="ghost"
+          size="sm"
+          onClick={loadAudit}
+          disabled={loading || fixing}
+        >
+          {loading ? "Loading…" : "🔄 Refresh"}
+        </Btn>
+        <Btn
+          variant="admin"
+          size="sm"
+          onClick={() =>
+            setConfirmAction({
+              message: `This will overwrite the "Reserved" and "Sold" numbers on ${issues.length} inventory row(s) to match what your orders actually say. Physical stock totals are never changed. Continue?`,
+              confirmLabel: "Fix reserved/sold",
+              confirmVariant: "sky",
+              onConfirm: runFix,
+            })
+          }
+          disabled={loading || fixing || issues.length === 0}
+        >
+          {fixing ? "Fixing…" : "🔧 Fix reserved/sold"}
+        </Btn>
+      </div>
+
+      {/* Info strip */}
+      <div
+        style={{
+          background: "var(--lemon)",
+          border: "1px solid var(--lemon-mid)",
+          borderRadius: "var(--radius-sm)",
+          padding: "8px 14px",
+          fontSize: 11,
+          color: "var(--lemon-dark)",
+          fontWeight: 600,
+          marginBottom: 14,
+          lineHeight: 1.6,
+        }}
+      >
+        🩺 Reserved/Sold mismatches can be auto-fixed here &nbsp;|&nbsp;
+        Negative "Available" and missing inventory rows need a manual stock
+        check
+      </div>
+
+      {loading && !data ? (
+        <div
+          style={{
+            textAlign: "center",
+            padding: 40,
+            color: "var(--text3)",
+            fontSize: 13,
+          }}
+        >
+          Loading audit…
+        </div>
+      ) : isClean ? (
+        <div
+          style={{
+            textAlign: "center",
+            padding: 40,
+            color: "var(--sky-dark)",
+            fontSize: 13,
+            fontWeight: 700,
+            background: "var(--sky)",
+            borderRadius: "var(--radius-sm)",
+            border: "1px solid var(--sky-mid)",
+          }}
+        >
+          ✅ No mismatches found. Inventory matches order state.
+        </div>
+      ) : (
+        <div>
+          {issues.length > 0 && (
+            <div style={{ marginBottom: 20 }}>
+              <div
+                style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  textTransform: "uppercase",
+                  letterSpacing: ".05em",
+                  color: "var(--text2)",
+                  marginBottom: 8,
+                }}
+              >
+                Inventory rows out of sync ({issues.length})
+              </div>
+              {issues.map((row) => (
+                <div
+                  key={row.inventoryId}
+                  style={{
+                    ...cardStyle,
+                    borderLeft: "3px solid var(--peach-dark)",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "flex-start",
+                      flexWrap: "wrap",
+                      gap: 8,
+                      marginBottom: 6,
+                    }}
+                  >
+                    <div style={{ fontSize: 13, fontWeight: 700 }}>
+                      {row.product} — {row.size}
+                    </div>
+                    <div style={{ fontSize: 11, color: "var(--text3)" }}>
+                      total={row.totalQty} reserved={row.reservedQty} sold=
+                      {row.soldQty} available=
+                      <span
+                        style={{
+                          color:
+                            row.availableQty < 0
+                              ? "var(--peach-dark)"
+                              : "inherit",
+                          fontWeight: 700,
+                        }}
+                      >
+                        {row.availableQty}
+                      </span>
+                    </div>
+                  </div>
+                  <ul style={{ margin: 0, paddingLeft: 18 }}>
+                    {row.problems.map((p, i) => (
+                      <li
+                        key={i}
+                        style={{
+                          fontSize: 12,
+                          color: "var(--text2)",
+                          lineHeight: 1.6,
+                        }}
+                      >
+                        {p}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {orphans.length > 0 && (
+            <div style={{ marginBottom: 20 }}>
+              <div
+                style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  textTransform: "uppercase",
+                  letterSpacing: ".05em",
+                  color: "var(--text2)",
+                  marginBottom: 8,
+                }}
+              >
+                Missing inventory rows ({orphans.length})
+              </div>
+              {orphans.map((o, i) => (
+                <div
+                  key={i}
+                  style={{
+                    ...cardStyle,
+                    borderLeft: "3px solid var(--lemon-dark)",
+                    fontSize: 12,
+                    color: "var(--text2)",
+                  }}
+                >
+                  <strong>
+                    {o.product} — {o.size}
+                  </strong>{" "}
+                  has active order items (reserved should be{" "}
+                  {o.expectedReserved}, sold should be {o.expectedSold}) but no
+                  matching Inventory row exists. Add this size to the product to
+                  track its stock.
+                </div>
+              ))}
+            </div>
+          )}
+
+          {unknownStatusOrders.length > 0 && (
+            <div style={{ marginBottom: 20 }}>
+              <div
+                style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  textTransform: "uppercase",
+                  letterSpacing: ".05em",
+                  color: "var(--text2)",
+                  marginBottom: 8,
+                }}
+              >
+                Orders with an unrecognized status ({unknownStatusOrders.length}
+                )
+              </div>
+              {unknownStatusOrders.map((o) => (
+                <div
+                  key={o.id}
+                  style={{
+                    ...cardStyle,
+                    borderLeft: "3px solid var(--text3)",
+                    fontSize: 12,
+                    color: "var(--text2)",
+                  }}
+                >
+                  Order <strong>{o.orderNumber}</strong> has status "{o.status}"
+                  — its items aren't counted as reserved or sold anywhere.
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {confirmAction && (
+        <ConfirmModal
+          message={confirmAction.message}
+          confirmLabel={confirmAction.confirmLabel}
+          confirmVariant={confirmAction.confirmVariant}
+          onConfirm={() => {
+            confirmAction.onConfirm();
+            setConfirmAction(null);
+          }}
+          onCancel={() => setConfirmAction(null)}
+        />
+      )}
+    </div>
+  );
+}
+
 function AdminOrders() {
   const { state, dispatch } = useApp();
   const [search, setSearch] = useState("");
@@ -6483,7 +7132,18 @@ function AdminOrders() {
   const [detail, setDetail] = useState(null);
   const [allOrders, setAllOrders] = useState(state.orders);
   const [loading, setLoading] = useState(true);
+  const [expandedItems, setExpandedItems] = useState(new Set());
+  const [filterSize, setFilterSize] = useState(""); // ← add
+  const [filterCategory, setFilterCategory] = useState(""); // ← add
 
+  const allSizes = useMemo(
+    () => sortSizes([...new Set(state.products.flatMap((p) => p.sizes || []))]),
+    [state.products],
+  );
+  const allCategories = useMemo(
+    () => [...new Set(state.products.map((p) => p.category).filter(Boolean))],
+    [state.products],
+  );
   // Re-fetch whenever search/filter changes
   useEffect(() => {
     setLoading(true);
@@ -6502,18 +7162,31 @@ function AdminOrders() {
   }, [search, filterStatus, filterLoc]);
 
   // Client-side filter as a fast fallback while API data loads
-  const filtered = allOrders.filter((o) => {
-    const q = search.toLowerCase();
-    const matchSearch =
-      !q ||
-      o.childName?.toLowerCase().includes(q) ||
-      o.parentName?.toLowerCase().includes(q) ||
-      o.childClass?.toLowerCase().includes(q) ||
-      o.orderNumber?.toLowerCase().includes(q);
-    const matchStatus = !filterStatus || o.status === filterStatus;
-    const matchLoc = !filterLoc || o.locationId === filterLoc;
-    return matchSearch && matchStatus && matchLoc;
-  });
+  const filtered = allOrders
+    .filter((o) => {
+      const q = search.toLowerCase();
+      const matchSearch =
+        !q ||
+        o.childName?.toLowerCase().includes(q) ||
+        o.parentName?.toLowerCase().includes(q) ||
+        o.childClass?.toLowerCase().includes(q) ||
+        o.orderNumber?.toLowerCase().includes(q);
+      const matchStatus = !filterStatus || o.status === filterStatus;
+      const matchLoc = !filterLoc || o.locationId === filterLoc;
+      const matchSizeAndCategory =
+        (!filterSize && !filterCategory) ||
+        o.items.some((it) => {
+          const cat = state.products.find(
+            (p) => p.id === it.productId,
+          )?.category;
+          return (
+            (!filterSize || it.size === filterSize) &&
+            (!filterCategory || cat === filterCategory)
+          );
+        });
+      return matchSearch && matchStatus && matchLoc && matchSizeAndCategory;
+    })
+    .sort((a, b) => a.orderNumber.localeCompare(b.orderNumber));
 
   function exportCSV() {
     const token = localStorage.getItem("ww_token");
@@ -6521,6 +7194,23 @@ function AdminOrders() {
       `${API_BASE_URL}/api/admin/orders/export?token=${token}`,
       "_blank",
     );
+  }
+
+  function formatItemsText(items) {
+    return items
+      .map(
+        (it) => `${it.productName} (${displaySize(it.size)}) x${it.quantity}`,
+      )
+      .join(", ");
+  }
+
+  function getLocationInitials(name) {
+    if (!name) return "—";
+    return name
+      .split(/[\s-]+/)
+      .filter(Boolean)
+      .map((w) => w[0].toUpperCase())
+      .join("");
   }
 
   async function handleStatusChange(orderId, newStatus) {
@@ -6546,6 +7236,94 @@ function AdminOrders() {
       });
     }
   }
+
+  const getItemText = (o) => {
+    const text = formatItemsText(o.items);
+    const isLong = text.length > 150;
+    const expanded = expandedItems.has(o.id);
+    const shown =
+      isLong && !expanded
+        ? text.slice(0, 150).replace(/,\s*[^,]*$/, "") + "…"
+        : text;
+
+    return (
+      <>
+        {shown}
+        {isLong && (
+          <a
+            href="#"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setExpandedItems((prev) => {
+                const next = new Set(prev);
+                next.has(o.id) ? next.delete(o.id) : next.add(o.id);
+                return next;
+              });
+            }}
+            style={{
+              marginLeft: 4,
+              color: "var(--sky-dark)",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {expanded ? "Show less" : "Show more"}
+          </a>
+        )}
+      </>
+    );
+  };
+
+  const getStatusSelect = (o) => {
+    if (o.status === "CANCELLED" || o.status === "PICKED_UP") {
+      const [bg, col] = (STATUS_COLORS[o.status] || "#eef0f4:#5a6072").split(
+        ":",
+      );
+      return (
+        <span style={{ fontSize: 12, fontWeight: 700 }}>
+          Status:{" "}
+          <span
+            className="txt-badge"
+            style={{
+              background: bg,
+              color: col,
+              padding: "3px 10px",
+              borderRadius: 30,
+            }}
+          >
+            {STATUS_LABELS[o.status]}
+          </span>
+        </span>
+      );
+    } else
+      return (
+        <>
+          <span style={{ fontSize: 12, fontWeight: 700 }}>Update status:</span>
+          <select
+            value={detail.status}
+            onChange={(e) => {
+              handleStatusChange(detail.id, e.target.value);
+              setDetail({ ...detail, status: e.target.value });
+            }}
+            style={{
+              flex: 1,
+              padding: "7px 10px",
+              border: "1px solid var(--border)",
+              borderRadius: "var(--radius-sm)",
+              fontSize: 12,
+              background: "var(--bg)",
+              outline: "none",
+            }}
+          >
+            {Object.entries(STATUS_LABELS).map(([k, v]) => (
+              <option key={k} value={k}>
+                {v}
+              </option>
+            ))}
+          </select>
+        </>
+      );
+  };
 
   return (
     <div className="animate-fade">
@@ -6619,6 +7397,46 @@ function AdminOrders() {
             </option>
           ))}
         </select>
+        <select // ← add
+          value={filterSize}
+          onChange={(e) => setFilterSize(e.target.value)}
+          style={{
+            padding: "8px 10px",
+            border: "1px solid var(--border)",
+            borderRadius: "var(--radius-sm)",
+            fontSize: 12,
+            background: "var(--bg)",
+            color: "var(--text)",
+            outline: "none",
+          }}
+        >
+          <option value="">All Sizes</option>
+          {allSizes.map((s) => (
+            <option key={s} value={s}>
+              {displaySize(s)}
+            </option>
+          ))}
+        </select>
+        <select
+          value={filterCategory}
+          onChange={(e) => setFilterCategory(e.target.value)}
+          style={{
+            padding: "8px 10px",
+            border: "1px solid var(--border)",
+            borderRadius: "var(--radius-sm)",
+            fontSize: 12,
+            background: "var(--bg)",
+            color: "var(--text)",
+            outline: "none",
+          }}
+        >
+          <option value="">All Categories</option>
+          {allCategories.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </select>
       </div>
       {loading ? (
         <div
@@ -6650,6 +7468,7 @@ function AdminOrders() {
                   "Child · Class",
                   "Parent",
                   "Location",
+                  "Items",
                   "Total",
                   "Status",
                   "Submitted",
@@ -6688,6 +7507,7 @@ function AdminOrders() {
                         borderBottom: "0.5px solid var(--border)",
                         fontWeight: 700,
                         color: "var(--sky-dark)",
+                        whiteSpace: "nowrap",
                       }}
                     >
                       {o.orderNumber}
@@ -6698,7 +7518,9 @@ function AdminOrders() {
                         borderBottom: "0.5px solid var(--border)",
                       }}
                     >
-                      <div style={{ fontWeight: 700 }}>{o.childName}</div>
+                      <div style={{ fontWeight: 700, whiteSpace: "nowrap" }}>
+                        {o.childName}
+                      </div>
                       <div style={{ fontSize: 10, color: "var(--text3)" }}>
                         {o.childClass}
                       </div>
@@ -6715,13 +7537,20 @@ function AdminOrders() {
                       style={{
                         padding: "9px 10px",
                         borderBottom: "0.5px solid var(--border)",
-                        // fontSize: 11,
                       }}
                     >
-                      {state.locations.find((l) => l.id === o.locationId)
-                        ?.name ||
-                        o.locationName ||
-                        "—"}
+                      {getLocationInitials(
+                        state.locations.find((l) => l.id === o.locationId)
+                          ?.name || o.locationName,
+                      )}
+                    </td>
+                    <td
+                      style={{
+                        padding: "9px 10px",
+                        borderBottom: "0.5px solid var(--border)",
+                      }}
+                    >
+                      {getItemText(o)}
                     </td>
                     <td
                       style={{
@@ -6974,31 +7803,7 @@ function AdminOrders() {
             </div>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <span style={{ fontSize: 12, fontWeight: 700 }}>
-              Update status:
-            </span>
-            <select
-              value={detail.status}
-              onChange={(e) => {
-                handleStatusChange(detail.id, e.target.value);
-                setDetail({ ...detail, status: e.target.value });
-              }}
-              style={{
-                flex: 1,
-                padding: "7px 10px",
-                border: "1px solid var(--border)",
-                borderRadius: "var(--radius-sm)",
-                fontSize: 12,
-                background: "var(--bg)",
-                outline: "none",
-              }}
-            >
-              {Object.entries(STATUS_LABELS).map(([k, v]) => (
-                <option key={k} value={k}>
-                  {v}
-                </option>
-              ))}
-            </select>
+            {getStatusSelect(detail)}
           </div>
         </Modal>
       )}
@@ -7009,7 +7814,9 @@ function AdminOrders() {
 function AdminMasterControl() {
   const { state, dispatch } = useApp();
   const [settings, setSettings] = useState({ ...state.settings });
-  const [locations, setLocations] = useState([...state.locations]);
+  const [locations, setLocations] = useState(
+    [...state.locations].sort((a, b) => a.name.localeCompare(b.name)),
+  );
   const [fields, setFields] = useState([...state.formFields]);
   const [newLocName, setNewLocName] = useState("");
   const [tab, setTab] = useState("locations");
@@ -7021,7 +7828,9 @@ function AdminMasterControl() {
     setSettings({ ...state.settings });
   }, [state.settings]);
   useEffect(() => {
-    setLocations([...state.locations]);
+    setLocations(
+      [...state.locations].sort((a, b) => a.name.localeCompare(b.name)),
+    );
   }, [state.locations]);
   useEffect(() => {
     setFields([...state.formFields]);
@@ -8405,7 +9214,16 @@ function ConfirmModal({
 function AdminShell() {
   const { state, dispatch } = useApp();
   const { adminPage } = state;
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const windowWidth = useWindowWidth();
+  const isDesktop = windowWidth >= 1024;
+  // Desktop: sidebar starts open and is a permanent rail (collapsible to icons).
+  // Mobile: sidebar starts closed and behaves as an overlay drawer.
+  const [sidebarOpen, setSidebarOpen] = useState(isDesktop);
+
+  // Keep sidebar state sensible when crossing the desktop/mobile breakpoint
+  useEffect(() => {
+    setSidebarOpen(isDesktop);
+  }, [isDesktop]);
 
   // The role stored on the logged-in admin user
   const adminRole = state.currentUser?.role || "STAFF";
@@ -8436,6 +9254,13 @@ function AdminShell() {
       icon: "📦",
       section: "Products",
       roles: null,
+    },
+    {
+      id: "audit",
+      label: "Stock Audit",
+      icon: "🩺",
+      section: "Products",
+      roles: ["SUPER_ADMIN", "MANAGER"],
     },
     {
       id: "orders",
@@ -8480,18 +9305,43 @@ function AdminShell() {
         height: "100vh",
         overflow: "hidden",
         background: "var(--bg2)",
+        position: "relative",
       }}
     >
-      {/* Sidebar */}
+      {/* Mobile backdrop — closes the drawer on tap outside */}
+      {!isDesktop && sidebarOpen && (
+        <div
+          onClick={() => setSidebarOpen(false)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,.45)",
+            zIndex: 199,
+          }}
+        />
+      )}
+
+      {/* Sidebar — permanent rail on desktop, slide-over drawer on mobile */}
       <div
         style={{
-          width: sidebarOpen ? 160 : 52,
+          width: isDesktop ? (sidebarOpen ? 160 : 52) : 220,
           background: "var(--sky-dark-bg)",
           flexShrink: 0,
-          transition: "width .2s",
+          transition: isDesktop ? "width .2s" : "transform .2s",
           display: "flex",
           flexDirection: "column",
           overflow: "hidden",
+          ...(isDesktop
+            ? { position: "relative" }
+            : {
+                position: "fixed",
+                top: 0,
+                bottom: 0,
+                left: 0,
+                zIndex: 200,
+                transform: sidebarOpen ? "translateX(0)" : "translateX(-100%)",
+                boxShadow: sidebarOpen ? "4px 0 24px rgba(0,0,0,.25)" : "none",
+              }),
         }}
       >
         <div
@@ -8520,7 +9370,7 @@ function AdminShell() {
               {state.settings.logoEmoji}
             </span>
           )}
-          {sidebarOpen && (
+          {(sidebarOpen || !isDesktop) && (
             <span
               style={{
                 fontFamily: "var(--font-display)",
@@ -8557,7 +9407,7 @@ function AdminShell() {
             if (item.section) lastSection = item.section;
             return (
               <div key={item.id}>
-                {showSection && sidebarOpen && (
+                {showSection && (sidebarOpen || !isDesktop) && (
                   <div
                     style={{
                       padding: "8px 14px 3px",
@@ -8572,15 +9422,16 @@ function AdminShell() {
                   </div>
                 )}
                 <button
-                  onClick={() =>
-                    dispatch({ type: "SET_ADMIN_PAGE", page: item.id })
-                  }
+                  onClick={() => {
+                    dispatch({ type: "SET_ADMIN_PAGE", page: item.id });
+                    if (!isDesktop) setSidebarOpen(false);
+                  }}
                   style={{
                     width: "100%",
                     display: "flex",
                     alignItems: "center",
                     gap: 8,
-                    padding: sidebarOpen ? "8px 14px" : "8px",
+                    padding: sidebarOpen || !isDesktop ? "8px 14px" : "8px",
                     background:
                       adminPage === item.id ? "rgba(0,0,0,.2)" : "none",
                     border: "none",
@@ -8598,7 +9449,7 @@ function AdminShell() {
                   <span style={{ fontSize: 15, flexShrink: 0 }}>
                     {item.icon}
                   </span>
-                  {sidebarOpen && (
+                  {(sidebarOpen || !isDesktop) && (
                     <span style={{ whiteSpace: "nowrap", overflow: "hidden" }}>
                       {item.label}
                     </span>
@@ -8631,11 +9482,12 @@ function AdminShell() {
               fontFamily: "var(--font-body)",
               fontSize: 11,
               fontWeight: 600,
-              justifyContent: sidebarOpen ? "flex-start" : "center",
+              justifyContent:
+                sidebarOpen || !isDesktop ? "flex-start" : "center",
             }}
           >
             <span style={{ fontSize: 14 }}>🚪</span>
-            {sidebarOpen && "Sign out"}
+            {(sidebarOpen || !isDesktop) && "Sign out"}
           </button>
         </div>
       </div>
@@ -8656,23 +9508,61 @@ function AdminShell() {
           style={{
             background: "var(--bg)",
             borderBottom: "1px solid var(--border)",
-            padding: "10px 20px",
+            padding: isDesktop ? "10px 20px" : "10px 14px",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
+            gap: 8,
           }}
         >
           <div
             style={{
-              fontFamily: "var(--font-display)",
-              fontWeight: 700,
-              fontSize: 15,
-              color: "var(--text)",
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              minWidth: 0,
             }}
           >
-            {navItems.find((n) => n.id === adminPage)?.label || "Admin"}
+            {/* Hamburger — mobile only */}
+            {!isDesktop && (
+              <button
+                onClick={() => setSidebarOpen(true)}
+                aria-label="Open menu"
+                style={{
+                  background: "none",
+                  border: "none",
+                  fontSize: 18,
+                  color: "var(--text2)",
+                  cursor: "pointer",
+                  padding: 4,
+                  flexShrink: 0,
+                }}
+              >
+                ☰
+              </button>
+            )}
+            <div
+              style={{
+                fontFamily: "var(--font-display)",
+                fontWeight: 700,
+                fontSize: isDesktop ? 15 : 14,
+                color: "var(--text)",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              {navItems.find((n) => n.id === adminPage)?.label || "Admin"}
+            </div>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              flexShrink: 0,
+            }}
+          >
             <div
               style={{
                 width: 30,
@@ -8685,15 +9575,18 @@ function AdminShell() {
                 fontSize: 13,
                 fontWeight: 800,
                 color: "var(--sky-dark)",
+                flexShrink: 0,
               }}
             >
               {(state.currentUser?.name || "A").charAt(0)}
             </div>
-            <span
-              style={{ fontSize: 12, fontWeight: 600, color: "var(--text2)" }}
-            >
-              {state.currentUser?.name || "Admin"}
-            </span>
+            {isDesktop && (
+              <span
+                style={{ fontSize: 12, fontWeight: 600, color: "var(--text2)" }}
+              >
+                {state.currentUser?.name || "Admin"}
+              </span>
+            )}
           </div>
         </div>
 
@@ -8701,7 +9594,7 @@ function AdminShell() {
         <div
           style={{
             flex: 1,
-            padding: 20,
+            padding: isDesktop ? 20 : 12,
             overflowY: "auto",
             minHeight: 0,
             position: "relative",
@@ -8711,6 +9604,8 @@ function AdminShell() {
           {adminPage === "parents" && <AdminParents />}
           {adminPage === "products" && <AdminProducts />}
           {adminPage === "inventory" && <AdminInventory />}
+          {adminPage === "audit" &&
+            (canManage ? <AdminInventoryAudit /> : <AccessDenied />)}
           {adminPage === "orders" && <AdminOrders />}
           {adminPage === "master" &&
             (canManage ? <AdminMasterControl /> : <AccessDenied />)}
@@ -8740,7 +9635,15 @@ function AdminParents() {
     const params = new URLSearchParams({ limit: "100" });
     if (search) params.set("search", search);
     api(`/api/admin/parents?${params}`)
-      .then((data) => setParents(data.parents || []))
+      .then((data) =>
+        setParents(
+          (data.parents || []).sort((a, b) =>
+            `${a.firstName} ${a.lastName}`.localeCompare(
+              `${b.firstName} ${b.lastName}`,
+            ),
+          ),
+        ),
+      )
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [search]);
@@ -9253,15 +10156,11 @@ function AdminLoginPage() {
               overflow: "hidden",
             }}
           >
-            {state.settings.logoUrl ? (
-              <img
-                src={state.settings.logoUrl}
-                alt="Logo"
-                style={{ width: "100%", height: "100%", objectFit: "contain" }}
-              />
-            ) : (
-              state.settings.logoEmoji
-            )}
+            <img
+              src={logo}
+              alt="Logo"
+              style={{ width: "100%", height: "100%", objectFit: "contain" }}
+            />
           </div>
           <h1
             style={{
@@ -9354,6 +10253,10 @@ export default function App() {
     return () => {}; // leave styles in
   }, []);
 
+  useEffect(() => {
+    // Warm up the Render server on app load
+    fetch(`${API_BASE_URL}/health`).catch(() => {});
+  }, []);
   // Restore session from localStorage so a page refresh doesn't log the user out
   useEffect(() => {
     const token = localStorage.getItem("ww_token");
