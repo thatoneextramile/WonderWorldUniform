@@ -1292,6 +1292,29 @@ function appReducer(state, action) {
       cart[action.index] = { ...cart[action.index], quantity: action.qty };
       return { ...state, cart };
     }
+    case "UPDATE_CART_SIZE": {
+      const cart = [...state.cart];
+      const item = cart[action.index];
+      if (!item || item.size === action.size) return state;
+      // If another line already has this product+size, merge quantities
+      // into it instead of creating a duplicate row.
+      const dupIndex = cart.findIndex(
+        (i, idx) =>
+          idx !== action.index &&
+          i.productId === item.productId &&
+          i.size === action.size,
+      );
+      if (dupIndex >= 0) {
+        cart[dupIndex] = {
+          ...cart[dupIndex],
+          quantity: cart[dupIndex].quantity + item.quantity,
+        };
+        cart.splice(action.index, 1);
+        return { ...state, cart };
+      }
+      cart[action.index] = { ...item, size: action.size };
+      return { ...state, cart };
+    }
     case "CLEAR_CART":
       return { ...state, cart: [] };
     case "ADD_ORDER":
@@ -3690,8 +3713,54 @@ function ParentCart({ cartForm, setCartForm }) {
                   <div style={{ fontWeight: 700, fontSize: 13 }}>
                     {item.productName}
                   </div>
-                  <div style={{ fontSize: 11, color: "var(--text3)" }}>
-                    Size {displaySize(displaySize(item.size))}
+                  <div style={{ marginTop: 3 }}>
+                    <select
+                      value={item.size}
+                      onChange={(e) => {
+                        const newSize = e.target.value;
+                        if (newSize === item.size) return;
+                        const oldKey = `${item.productId}-${item.size}`;
+                        const newKey = `${item.productId}-${newSize}`;
+                        const available = stockMap[newKey];
+                        setStockWarnings((w) => {
+                          const n = { ...w };
+                          delete n[oldKey];
+                          if (available !== undefined && item.quantity > available) {
+                            n[newKey] =
+                              available === 0
+                                ? `${item.productName} (${displaySize(newSize)}) is out of stock.`
+                                : `Only ${available} available for ${item.productName} (${displaySize(newSize)})`;
+                          } else {
+                            delete n[newKey];
+                          }
+                          return n;
+                        });
+                        dispatch({
+                          type: "UPDATE_CART_SIZE",
+                          index: i,
+                          size: newSize,
+                        });
+                      }}
+                      style={{
+                        fontSize: 11,
+                        color: "var(--text3)",
+                        border: "1px solid var(--border)",
+                        borderRadius: 4,
+                        padding: "2px 4px",
+                        background: "var(--bg)",
+                        outline: "none",
+                        cursor: "pointer",
+                      }}
+                    >
+                      {sortSizes(
+                        state.products.find((p) => p.id === item.productId)
+                          ?.sizes || [item.size],
+                      ).map((s) => (
+                        <option key={s} value={s}>
+                          Size {displaySize(s)}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -6039,9 +6108,7 @@ function AdminInventory() {
   // Filter by search text and category
   const filtered = allRows
     .filter((r) =>
-      filter
-        ? r.productName.toLowerCase().includes(filter.toLowerCase())
-        : true,
+      filter ? r.productName.toLowerCase().includes(filter.toLowerCase()) : true,
     )
     .filter((r) => {
       if (filterCategory === "All") return true;
