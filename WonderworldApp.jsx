@@ -5995,6 +5995,7 @@ function AdminProducts() {
 function AdminInventory() {
   const { state, dispatch } = useApp();
   const [filter, setFilter] = useState("");
+  const [filterCategory, setFilterCategory] = useState("All");
   const [apiRows, setApiRows] = useState(null);
   const [saving, setSaving] = useState({});
   const [editingRow, setEditingRow] = useState(null); // { invId, field: "total"|"sold", value
@@ -6026,12 +6027,27 @@ function AdminInventory() {
         }))
     : [];
 
-  // Filter by search text
-  const filtered = filter
-    ? allRows.filter((r) =>
-        r.productName.toLowerCase().includes(filter.toLowerCase()),
-      )
-    : allRows;
+  // Unique categories from products, for the filter buttons
+  const categories = useMemo(
+    () => [
+      "All",
+      ...new Set(state.products.map((p) => p.category).filter(Boolean)),
+    ],
+    [state.products],
+  );
+
+  // Filter by search text and category
+  const filtered = allRows
+    .filter((r) =>
+      filter
+        ? r.productName.toLowerCase().includes(filter.toLowerCase())
+        : true,
+    )
+    .filter((r) => {
+      if (filterCategory === "All") return true;
+      const cat = state.products.find((p) => p.id === r.productId)?.category;
+      return cat === filterCategory;
+    });
 
   // Collect all unique sizes (sorted) for column headers
   const allSizes = useMemo(
@@ -6211,6 +6227,27 @@ function AdminInventory() {
         <Btn variant="admin" size="sm" onClick={exportCSV}>
           ⬆ Export
         </Btn>
+      </div>
+
+      {/* Category filter buttons */}
+      <div
+        style={{
+          display: "flex",
+          gap: 6,
+          flexWrap: "wrap",
+          marginBottom: 14,
+        }}
+      >
+        {categories.map((c) => (
+          <Btn
+            key={c}
+            variant={filterCategory === c ? "admin" : "ghost"}
+            size="sm"
+            onClick={() => setFilterCategory(c)}
+          >
+            {c}
+          </Btn>
+        ))}
       </div>
 
       {/* Info strip */}
