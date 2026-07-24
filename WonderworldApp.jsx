@@ -3725,7 +3725,10 @@ function ParentCart({ cartForm, setCartForm }) {
                         setStockWarnings((w) => {
                           const n = { ...w };
                           delete n[oldKey];
-                          if (available !== undefined && item.quantity > available) {
+                          if (
+                            available !== undefined &&
+                            item.quantity > available
+                          ) {
                             n[newKey] =
                               available === 0
                                 ? `${item.productName} (${displaySize(newSize)}) is out of stock.`
@@ -5252,8 +5255,10 @@ function AdminDashboard() {
     api("/api/admin/stats")
       .then(setStats)
       .catch(() => {});
-    // Also refresh the admin product list (includes costPrice) and recent orders
-    Promise.all([api("/api/admin/products"), api("/api/admin/orders?limit=20")])
+    // Also refresh the admin product list (includes costPrice) and the FULL
+    // order history — the "Products by Order Volume" fallback below needs
+    // every order, not just a recent page, or its totals undercount.
+    Promise.all([api("/api/admin/products"), api("/api/admin/orders")])
       .then(([prods, ordersData]) => {
         dispatch({
           type: "SET_ADMIN_DATA",
@@ -5438,7 +5443,7 @@ function AdminDashboard() {
                     style={{
                       width: `${((p.totalQty / maxQty) * 100).toFixed(0)}%`,
                       height: "100%",
-                      background: colors[i],
+                      background: colors[i % colors.length],
                       borderRadius: 4,
                       transition: "width .5s ease",
                     }}
@@ -6108,7 +6113,9 @@ function AdminInventory() {
   // Filter by search text and category
   const filtered = allRows
     .filter((r) =>
-      filter ? r.productName.toLowerCase().includes(filter.toLowerCase()) : true,
+      filter
+        ? r.productName.toLowerCase().includes(filter.toLowerCase())
+        : true,
     )
     .filter((r) => {
       if (filterCategory === "All") return true;
@@ -10491,246 +10498,4 @@ export default function App() {
       </Routes>
     </AppCtx.Provider>
   );
-
-  // return (
-  //   <AppCtx.Provider value={{ state, dispatch }}>
-  //     <div style={{ fontFamily: "var(--font-body)" }}>
-  //       {/* Admin direct login */}
-  //       {showAdminDirect && (
-  //         <div
-  //           style={{
-  //             minHeight: "100vh",
-  //             display: "flex",
-  //             alignItems: "center",
-  //             justifyContent: "center",
-  //             background:
-  //               "linear-gradient(160deg,#d6ede5 0%,#f5f3ef 60%,#fdf8ec 100%)",
-  //             padding: 16,
-  //           }}
-  //         >
-  //           <div
-  //             className="animate-pop"
-  //             style={{
-  //               background: "var(--bg)",
-  //               borderRadius: "var(--radius)",
-  //               padding: 32,
-  //               width: "100%",
-  //               maxWidth: 360,
-  //               boxShadow: "var(--shadow-lg)",
-  //             }}
-  //           >
-  //             <div style={{ textAlign: "center", marginBottom: 24 }}>
-  //               <div
-  //                 style={{
-  //                   width: 60,
-  //                   height: 60,
-  //                   //borderRadius: "95%",
-  //                   // background: "var(--ww-bg)",
-  //                   display: "flex",
-  //                   alignItems: "center",
-  //                   justifyContent: "center",
-  //                   fontSize: 28,
-  //                   margin: "0 auto 12px",
-  //                   overflow: "hidden",
-  //                 }}
-  //               >
-  //                 {/* {state.settings.logoEmoji} */}
-  //                 {state.settings.logoUrl ? (
-  //                   <img
-  //                     src={state.settings.logoUrl}
-  //                     alt="Logo"
-  //                     style={{
-  //                       width: "100%",
-  //                       height: "100%",
-  //                       objectFit: "contain",
-  //                     }}
-  //                   />
-  //                 ) : (
-  //                   state.settings.logoEmoji
-  //                 )}
-  //               </div>
-  //               <h1
-  //                 style={{
-  //                   fontFamily: "var(--font-display)",
-  //                   fontWeight: 700,
-  //                   fontSize: 20,
-  //                   color: "var(--sky-dark-bg)",
-  //                 }}
-  //               >
-  //                 Admin Portal
-  //               </h1>
-  //               <p
-  //                 style={{ fontSize: 12, color: "var(--text3)", marginTop: 4 }}
-  //               >
-  //                 Wonderworld Admin Dashboard
-  //               </p>
-  //             </div>
-  //             <form
-  //               onSubmit={handleAdminLogin}
-  //               style={{ display: "flex", flexDirection: "column", gap: 12 }}
-  //             >
-  //               <input
-  //                 name="email"
-  //                 type="email"
-  //                 placeholder="admin@school.com"
-  //                 style={{
-  //                   width: "100%",
-  //                   padding: "9px 12px",
-  //                   border: "1px solid var(--border)",
-  //                   borderRadius: "var(--radius-sm)",
-  //                   fontSize: 13,
-  //                   background: "var(--bg)",
-  //                   color: "var(--text)",
-  //                   outline: "none",
-  //                   marginBottom: 4,
-  //                 }}
-  //               />
-  //               <input
-  //                 name="password"
-  //                 type="password"
-  //                 placeholder="Password"
-  //                 style={{
-  //                   width: "100%",
-  //                   padding: "9px 12px",
-  //                   border: "1px solid var(--border)",
-  //                   borderRadius: "var(--radius-sm)",
-  //                   fontSize: 13,
-  //                   background: "var(--bg)",
-  //                   color: "var(--text)",
-  //                   outline: "none",
-  //                 }}
-  //               />
-  //               <button
-  //                 type="submit"
-  //                 style={{
-  //                   padding: "11px",
-  //                   background: "var(--sky-dark-bg)",
-  //                   color: "#fff",
-  //                   border: "none",
-  //                   borderRadius: "var(--radius-sm)",
-  //                   fontSize: 14,
-  //                   fontWeight: 800,
-  //                   cursor: "pointer",
-  //                   fontFamily: "var(--font-body)",
-  //                 }}
-  //               >
-  //                 {adminLoginLoading ? "Logging in…" : "Log In to Admin"}
-  //               </button>
-  //               <button
-  //                 type="button"
-  //                 onClick={() =>
-  //                   dispatch({
-  //                     type: "SET_VIEW",
-  //                     view: "parent",
-  //                     parentPage: "login",
-  //                   })
-  //                 }
-  //                 style={{
-  //                   background: "none",
-  //                   border: "none",
-  //                   color: "var(--text3)",
-  //                   fontSize: 12,
-  //                   cursor: "pointer",
-  //                   fontFamily: "var(--font-body)",
-  //                 }}
-  //               >
-  //                 ← Parent Portal
-  //               </button>
-  //             </form>
-  //           </div>
-  //         </div>
-  //       )}
-
-  //       {/* Main app */}
-  //       {!showAdminDirect && (
-  //         <>
-  //           {/* View switcher (demo only) */}
-  //           {!state.currentUser && (
-  //             <div
-  //               style={{
-  //                 position: "fixed",
-  //                 top: 12,
-  //                 right: 12,
-  //                 zIndex: 500,
-  //                 display: "flex",
-  //                 gap: 6,
-  //               }}
-  //             >
-  //               <button
-  //                 onClick={() =>
-  //                   dispatch({
-  //                     type: "SET_VIEW",
-  //                     view: "parent",
-  //                     parentPage: "login",
-  //                   })
-  //                 }
-  //                 style={{
-  //                   padding: "5px 12px",
-  //                   borderRadius: 30,
-  //                   fontSize: 11,
-  //                   fontWeight: 700,
-  //                   cursor: "pointer",
-  //                   border: "1.5px solid",
-  //                   borderColor:
-  //                     state.view === "parent"
-  //                       ? "var(--sky-dark-bg)"
-  //                       : "var(--border)",
-  //                   background:
-  //                     state.view === "parent"
-  //                       ? "var(--sky-dark-bg)"
-  //                       : "rgba(255,255,255,.9)",
-  //                   color: state.view === "parent" ? "#fff" : "var(--text2)",
-  //                 }}
-  //               >
-  //                 Parent
-  //               </button>
-  //               <button
-  //                 onClick={() =>
-  //                   dispatch({
-  //                     type: "SET_VIEW",
-  //                     view: "admin",
-  //                     adminPage: "dashboard",
-  //                   })
-  //                 }
-  //                 style={{
-  //                   padding: "5px 12px",
-  //                   borderRadius: 30,
-  //                   fontSize: 11,
-  //                   fontWeight: 700,
-  //                   cursor: "pointer",
-  //                   border: "1.5px solid",
-  //                   borderColor:
-  //                     state.view === "admin"
-  //                       ? "var(--sky-dark-bg)"
-  //                       : "var(--border)",
-  //                   background:
-  //                     state.view === "admin"
-  //                       ? "var(--sky-dark-bg)"
-  //                       : "rgba(255,255,255,.9)",
-  //                   color: state.view === "admin" ? "#fff" : "var(--text2)",
-  //                 }}
-  //               >
-  //                 Admin
-  //               </button>
-  //             </div>
-  //           )}
-  //           {(state.userRole === "parent" ||
-  //             (state.view === "parent" && !state.currentUser)) && (
-  //             <ParentShell />
-  //           )}
-  //           {(state.userRole === "admin" ||
-  //             (state.view === "admin" && state.currentUser)) && <AdminShell />}
-  //         </>
-  //       )}
-
-  //       {/* Toast Notification */}
-  //       {state.toast && (
-  //         <Toast
-  //           message={state.toast}
-  //           onClose={() => dispatch({ type: "CLEAR_TOAST" })}
-  //         />
-  //       )}
-  //     </div>
-  //   </AppCtx.Provider>
-  // );
 }
