@@ -7297,8 +7297,7 @@ function AdminOrders() {
         });
       return matchSearch && matchStatus && matchLoc && matchSizeAndCategory;
     })
-    .sort((a, b) => a.orderNumber.localeCompare(b.orderNumber));
-
+    .sort((a, b) => b.orderNumber.localeCompare(a.orderNumber));
   function exportCSV() {
     const token = localStorage.getItem("ww_token");
     window.open(
