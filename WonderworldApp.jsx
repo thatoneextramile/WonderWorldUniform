@@ -5676,8 +5676,8 @@ function AdminDashboard() {
               0,
             ),
         }))
-        .sort((a, b) => b.totalQty - a.totalQty)
-        .slice(0, 6);
+        .sort((a, b) => b.totalQty - a.totalQty);
+  // .slice(0, 6);
 
   const maxQty = Math.max(...productQtys.map((p) => p.totalQty), 1);
 
@@ -5713,6 +5713,15 @@ function AdminDashboard() {
           sub="Needs action"
           color="var(--peach-dark)"
         />
+        <StatCard
+          label="Change Requests"
+          value={
+            stats?.pendingChangeRequests ??
+            orders.filter((o) => o.changeRequests?.length > 0).length
+          }
+          sub="Needs action"
+          color="var(--peach-dark)"
+        />
       </div>
 
       <Card style={{ marginBottom: 14 }}>
@@ -5725,28 +5734,55 @@ function AdminDashboard() {
           >
             <thead>
               <tr>
-                {["Order", "Child", "Location", "Total", "Status"].map((h) => (
-                  <th
-                    key={h}
-                    className="txt-th"
-                    style={{
-                      padding: "6px 8px",
-                      textAlign: "left",
-                      borderBottom: "1px solid var(--border)",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {h}
-                  </th>
-                ))}
+                {["", "Order", "Child", "Location", "Total", "Status"].map(
+                  (h) => (
+                    <th
+                      key={h}
+                      className="txt-th"
+                      style={{
+                        padding: "6px 8px",
+                        textAlign: "left",
+                        borderBottom: "1px solid var(--border)",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {h}
+                    </th>
+                  ),
+                )}
               </tr>
             </thead>
             <tbody>
               {orders.slice(0, 5).map((o) => {
                 const amount = parseFloat(o.totalAmount);
+                const hasPendingChange = o.changeRequests?.length > 0;
                 return (
-                  <tr key={o.id}>
+                  <tr
+                    key={o.id}
+                    style={
+                      hasPendingChange ? { background: "#fffaf0" } : undefined
+                    }
+                  >
                     {[
+                      hasPendingChange ? (
+                        <span
+                          title="Size change request pending"
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            width: 16,
+                            height: 16,
+                            borderRadius: "50%",
+                            background: "var(--peach-dark)",
+                            color: "#fff",
+                            fontSize: 10,
+                            fontWeight: 900,
+                          }}
+                        >
+                          !
+                        </span>
+                      ) : null,
                       o.orderNumber,
                       `${o.childName} · ${o.childClass}`,
                       state.locations.find((l) => l.id === o.locationId)
@@ -7622,6 +7658,8 @@ function AdminOrders() {
   const [expandedItems, setExpandedItems] = useState(new Set());
   const [filterSize, setFilterSize] = useState(""); // ← add
   const [filterCategory, setFilterCategory] = useState(""); // ← add
+  const [rejectingId, setRejectingId] = useState(null);
+  const [rejectNote, setRejectNote] = useState("");
 
   const allSizes = useMemo(
     () => sortSizes([...new Set(state.products.flatMap((p) => p.sizes || []))]),
@@ -7680,6 +7718,55 @@ function AdminOrders() {
       `${API_BASE_URL}/api/admin/orders/export?token=${token}`,
       "_blank",
     );
+  }
+
+  async function approveChangeRequest(changeRequestId) {
+    try {
+      const updatedOrder = await api(
+        `/api/admin/change-requests/${changeRequestId}/approve`,
+        {
+          method: "PUT",
+        },
+      );
+      setAllOrders((prev) =>
+        prev.map((o) => (o.id === updatedOrder.id ? updatedOrder : o)),
+      );
+      setDetail(updatedOrder);
+      dispatch({
+        type: "SET_TOAST",
+        message: "Change request approved — order updated.",
+      });
+    } catch (err) {
+      dispatch({
+        type: "SET_TOAST",
+        message: err.message || "Failed to approve request",
+      });
+    }
+  }
+
+  async function rejectChangeRequest(changeRequestId) {
+    if (!rejectNote.trim()) return;
+    try {
+      const updatedOrder = await api(
+        `/api/admin/change-requests/${changeRequestId}/reject`,
+        {
+          method: "PUT",
+          body: { note: rejectNote },
+        },
+      );
+      setAllOrders((prev) =>
+        prev.map((o) => (o.id === updatedOrder.id ? updatedOrder : o)),
+      );
+      setDetail(updatedOrder);
+      setRejectingId(null);
+      setRejectNote("");
+      dispatch({ type: "SET_TOAST", message: "Change request rejected." });
+    } catch (err) {
+      dispatch({
+        type: "SET_TOAST",
+        message: err.message || "Failed to reject request",
+      });
+    }
   }
 
   function formatItemsText(items) {
@@ -7759,9 +7846,16 @@ function AdminOrders() {
       </>
     );
   };
-
   const getStatusSelect = (o) => {
-    if (o.status === "CANCELLED" || o.status === "PICKED_UP") {
+    const hasPendingChangeRequest =
+      ["SUBMITTED", "REVIEW"].includes(o.status) &&
+      o.changeRequests?.some((cr) => cr.status === "PENDING");
+
+    if (
+      o.status === "CANCELLED" ||
+      o.status === "PICKED_UP" ||
+      hasPendingChangeRequest
+    ) {
       const [bg, col] = (STATUS_COLORS[o.status] || "#eef0f4:#5a6072").split(
         ":",
       );
@@ -7779,6 +7873,18 @@ function AdminOrders() {
           >
             {STATUS_LABELS[o.status]}
           </span>
+          {hasPendingChangeRequest && (
+            <span
+              style={{
+                marginLeft: 8,
+                fontSize: 11,
+                color: "var(--peach-dark)",
+                fontWeight: 700,
+              }}
+            >
+              🔒 Resolve the size change request first
+            </span>
+          )}
         </span>
       );
     } else
@@ -7808,6 +7914,251 @@ function AdminOrders() {
             ))}
           </select>
         </>
+      );
+  };
+
+  const getChangeRequestApproval = (detail) => {
+    if (detail && detail.changeRequests?.length > 0) {
+      const cr = detail.changeRequests[0];
+      return (
+        <div
+          style={{
+            marginTop: 16,
+            border: "1px solid var(--border)",
+            borderRadius: "var(--radius)",
+            overflow: "hidden",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              padding: "10px 14px",
+              background: "var(--bg2)",
+              borderBottom: "1px solid var(--border)",
+            }}
+          >
+            <span style={{ fontWeight: 700, fontSize: 13 }}>
+              {detail.childName} · {detail.childClass}
+            </span>
+            <span style={{ fontSize: 11, color: "var(--text3)" }}>
+              Requested {new Date(cr.requestedAt).toLocaleDateString()}
+            </span>
+          </div>
+          <div style={{ padding: "10px 14px" }}>
+            <table
+              style={{
+                width: "100%",
+                borderCollapse: "collapse",
+                fontSize: 12,
+              }}
+            >
+              <thead>
+                <tr>
+                  {["Item", "Qty", "Current Size", "", "Requested Size"].map(
+                    (h) => (
+                      <th
+                        key={h}
+                        style={{
+                          textAlign: "left",
+                          padding: "4px 6px",
+                          fontSize: 10,
+                          fontWeight: 800,
+                          letterSpacing: ".04em",
+                          textTransform: "uppercase",
+                          color: "var(--text3)",
+                          borderBottom: "1px solid var(--border)",
+                        }}
+                      >
+                        {h}
+                      </th>
+                    ),
+                  )}
+                </tr>
+              </thead>
+              <tbody>
+                {detail.items.map((item, i) => {
+                  const change = cr.changes.find(
+                    (c) =>
+                      c.productId === item.productId &&
+                      c.fromSize === item.size,
+                  );
+                  return (
+                    <tr key={i}>
+                      <td
+                        style={{
+                          padding: "6px",
+                          borderBottom: "0.5px solid var(--border)",
+                        }}
+                      >
+                        {item.productName}
+                      </td>
+                      <td
+                        style={{
+                          padding: "6px",
+                          borderBottom: "0.5px solid var(--border)",
+                        }}
+                      >
+                        ×{item.quantity}
+                      </td>
+                      <td
+                        style={{
+                          padding: "6px",
+                          borderBottom: "0.5px solid var(--border)",
+                          color: change ? "var(--text3)" : "var(--text)",
+                          textDecoration: change ? "line-through" : "none",
+                        }}
+                      >
+                        {displaySize(item.size)}
+                      </td>
+                      <td
+                        style={{
+                          padding: "6px",
+                          borderBottom: "0.5px solid var(--border)",
+                        }}
+                      >
+                        {change ? "→" : "—"}
+                      </td>
+                      <td
+                        style={{
+                          padding: "6px",
+                          borderBottom: "0.5px solid var(--border)",
+                          fontWeight: change ? 800 : 400,
+                          color: change ? "var(--mint-dark)" : "var(--text)",
+                        }}
+                      >
+                        {displaySize(change ? change.toSize : item.size)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+
+            {rejectingId === cr.id ? (
+              <div style={{ marginTop: 12 }}>
+                <label
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 700,
+                    display: "block",
+                    marginBottom: 6,
+                  }}
+                >
+                  Reason for rejection{" "}
+                  <span style={{ color: "var(--peach-dark)" }}>*</span>
+                </label>
+                <textarea
+                  value={rejectNote}
+                  onChange={(e) => setRejectNote(e.target.value)}
+                  rows={3}
+                  placeholder="e.g. Requested size is currently out of stock."
+                  style={{
+                    width: "100%",
+                    padding: "9px 12px",
+                    border: "1.5px solid var(--peach-mid)",
+                    borderRadius: "var(--radius-sm)",
+                    fontSize: 13,
+                    fontFamily: "var(--font-body)",
+                    resize: "vertical",
+                    outline: "none",
+                  }}
+                />
+                <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
+                  <Btn
+                    variant="ghost"
+                    fullWidth
+                    onClick={() => {
+                      setRejectingId(null);
+                      setRejectNote("");
+                    }}
+                  >
+                    Cancel
+                  </Btn>
+                  <Btn
+                    variant="danger"
+                    fullWidth
+                    disabled={!rejectNote.trim()}
+                    onClick={() => rejectChangeRequest(cr.id)}
+                  >
+                    Confirm Rejection
+                  </Btn>
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
+                <Btn
+                  variant="admin"
+                  fullWidth
+                  onClick={() => approveChangeRequest(cr.id)}
+                >
+                  ✅ Approve
+                </Btn>
+                <Btn
+                  variant="softRed"
+                  fullWidth
+                  onClick={() => setRejectingId(cr.id)}
+                >
+                  ❌ Reject
+                </Btn>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+  };
+
+  const getStatusUpdate = (o) => {
+    const hasPendingChangeRequest =
+      ["SUBMITTED", "REVIEW"].includes(o.status) &&
+      o.changeRequests?.length > 0;
+    if (o.status === "CANCELLED" || o.status === "PICKED_UP")
+      return (
+        <span
+          style={{
+            fontSize: 11,
+            color: "var(--text3)",
+            fontStyle: "italic",
+            padding: "4px 8px",
+            background: "var(--bg3)",
+            borderRadius: "var(--radius-xs)",
+            display: "inline-block",
+          }}
+        >
+          Locked
+        </span>
+      );
+    else
+      return (
+        <select
+          value={o.status}
+          onChange={(e) => handleStatusChange(o.id, e.target.value)}
+          style={{
+            padding: "4px 8px",
+            border: "1px solid var(--border)",
+            borderRadius: "var(--radius-xs)",
+            // fontSize: 11,
+            background: "var(--bg)",
+            color: "var(--text)",
+            outline: "none",
+            cursor: "pointer",
+          }}
+        >
+          // Replace with:
+          {Object.entries(STATUS_LABELS)
+            .filter(([value]) => {
+              if (o.status === "PICKED_UP" && value === "CANCELLED")
+                return false;
+              return true;
+            })
+            .map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+        </select>
       );
   };
 
@@ -7982,7 +8333,12 @@ function AdminOrders() {
                 return (
                   <tr
                     key={o.id}
-                    style={{ cursor: "pointer", transition: "background .15s" }}
+                    style={{
+                      cursor: "pointer",
+                      transition: "background .15s",
+                      background:
+                        o.changeRequests?.length > 0 ? "#fffaf0" : undefined,
+                    }}
                     onClick={() => {
                       setDetail(o);
                     }}
@@ -8056,6 +8412,20 @@ function AdminOrders() {
                       }}
                     >
                       <Badge status={o.status} />
+                      {o.changeRequests?.length > 0 && (
+                        <span
+                          className="txt-badge"
+                          style={{
+                            background: "var(--peach)",
+                            color: "var(--peach-dark)",
+                            padding: "3px 10px",
+                            borderRadius: 30,
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          ⚠ Change Requested
+                        </span>
+                      )}
                     </td>
                     <td
                       style={{
@@ -8077,54 +8447,7 @@ function AdminOrders() {
                       }}
                       onClick={(e) => e.stopPropagation()}
                     >
-                      {o.status === "CANCELLED" || o.status === "PICKED_UP" ? (
-                        <span
-                          style={{
-                            fontSize: 11,
-                            color: "var(--text3)",
-                            fontStyle: "italic",
-                            padding: "4px 8px",
-                            background: "var(--bg3)",
-                            borderRadius: "var(--radius-xs)",
-                            display: "inline-block",
-                          }}
-                        >
-                          Locked
-                        </span>
-                      ) : (
-                        <select
-                          value={o.status}
-                          onChange={(e) =>
-                            handleStatusChange(o.id, e.target.value)
-                          }
-                          style={{
-                            padding: "4px 8px",
-                            border: "1px solid var(--border)",
-                            borderRadius: "var(--radius-xs)",
-                            // fontSize: 11,
-                            background: "var(--bg)",
-                            color: "var(--text)",
-                            outline: "none",
-                            cursor: "pointer",
-                          }}
-                        >
-                          // Replace with:
-                          {Object.entries(STATUS_LABELS)
-                            .filter(([value]) => {
-                              if (
-                                o.status === "PICKED_UP" &&
-                                value === "CANCELLED"
-                              )
-                                return false;
-                              return true;
-                            })
-                            .map(([value, label]) => (
-                              <option key={value} value={value}>
-                                {label}
-                              </option>
-                            ))}
-                        </select>
-                      )}
+                      {getStatusUpdate(o)}
                     </td>
                   </tr>
                 );
@@ -8291,6 +8614,7 @@ function AdminOrders() {
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             {getStatusSelect(detail)}
           </div>
+          {getChangeRequestApproval(detail)}
         </Modal>
       )}
     </div>
