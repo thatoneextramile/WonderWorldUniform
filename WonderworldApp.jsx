@@ -4261,7 +4261,6 @@ function ParentCart({ cartForm, setCartForm }) {
     </div>
   );
 }
-
 function ParentOrders() {
   const { state, dispatch } = useApp();
   const [myOrders, setMyOrders] = useState(
@@ -4272,8 +4271,8 @@ function ParentOrders() {
   const [editingOrder, setEditingOrder] = useState(null);
   const [viewRequest, setViewRequest] = useState(null);
 
-  useEffect(() => {
-    api("/api/orders/mine")
+  function loadOrders() {
+    return api("/api/orders/mine")
       .then((orders) => {
         setMyOrders(orders);
         dispatch({ type: "SET_ORDERS", orders });
@@ -4282,8 +4281,11 @@ function ParentOrders() {
         setMyOrders(
           state.orders.filter((o) => o.parentId === state.currentUser?.id),
         ),
-      )
-      .finally(() => setLoading(false));
+      );
+  }
+
+  useEffect(() => {
+    loadOrders().finally(() => setLoading(false));
   }, []);
 
   const [pendingSizes, setPendingSizes] = useState({});
@@ -4295,16 +4297,6 @@ function ParentOrders() {
 
   function handleSizeChange(itemIndex, newSize) {
     setPendingSizes((prev) => ({ ...prev, [itemIndex]: newSize }));
-  }
-
-  // Finds the pending/latest change (if any) that applies to a specific
-  // order item — matched on productId + the size it was requested *from*,
-  // so this stays correct even if an order has the same product at two
-  // different sizes as separate line items.
-  function findItemChange(changeRequest, item) {
-    return changeRequest?.changes?.find(
-      (c) => c.productId === item.productId && c.fromSize === item.size,
-    );
   }
 
   async function submitChangeRequest() {
@@ -4326,6 +4318,7 @@ function ParentOrders() {
         method: "POST",
         body: { changes },
       });
+      await loadOrders();
       dispatch({
         type: "SET_TOAST",
         message:
@@ -4349,7 +4342,6 @@ function ParentOrders() {
 
   const detailModal = () => {
     if (detail) {
-      const latestChangeRequest = detail.changeRequests?.[0];
       return (
         <Modal
           title={`Order ${detail.orderNumber}`}
@@ -4365,24 +4357,6 @@ function ParentOrders() {
           >
             <div>
               <Badge status={detail.status} />
-              {latestChangeRequest && (
-                <span
-                  className="txt-badge"
-                  style={{
-                    fontWeight: 800,
-                    whiteSpace: "nowrap",
-                    padding: "3px 10px",
-                    borderRadius: 30,
-                    background:
-                      CHANGE_REQUEST_STYLES[latestChangeRequest.status].bg,
-                    color:
-                      CHANGE_REQUEST_STYLES[latestChangeRequest.status].color,
-                    marginLeft: 5,
-                  }}
-                >
-                  {CHANGE_REQUEST_STYLES[latestChangeRequest.status].label}
-                </span>
-              )}
             </div>
             <span style={{ fontSize: 11, color: "var(--text3)" }}>
               {detail.createdAt
@@ -4431,39 +4405,24 @@ function ParentOrders() {
               marginBottom: 12,
             }}
           >
-            {detail.items.map((item, i) => {
-              const change = findItemChange(latestChangeRequest, item);
-              return (
-                <div
-                  key={i}
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    fontSize: 13,
-                    padding: "4px 0",
-                  }}
-                >
-                  <span>
-                    {item.productName} ({displaySize(item.size)}) ×
-                    {item.quantity}
-                    {change && (
-                      <span
-                        style={{
-                          color: "var(--lemon-dark)",
-                          fontWeight: 800,
-                        }}
-                      >
-                        {" "}
-                        → {displaySize(change.toSize)}
-                      </span>
-                    )}
-                  </span>
-                  <span style={{ fontWeight: 700 }}>
-                    ${(Number(item.unitPrice) * item.quantity).toFixed(2)}
-                  </span>
-                </div>
-              );
-            })}
+            {detail.items.map((item, i) => (
+              <div
+                key={i}
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  fontSize: 13,
+                  padding: "4px 0",
+                }}
+              >
+                <span>
+                  {item.productName} ({displaySize(item.size)}) ×{item.quantity}
+                </span>
+                <span style={{ fontWeight: 700 }}>
+                  ${(Number(item.unitPrice) * item.quantity).toFixed(2)}
+                </span>
+              </div>
+            ))}
           </div>
           <div
             style={{
@@ -4523,42 +4482,148 @@ function ParentOrders() {
     }
   };
 
-  const sizeEditButton = (o) => {
-    const latestChangeRequest = o.changeRequests?.[0];
-    const canEditSizes =
-      ["SUBMITTED", "REVIEW"].includes(o.status) &&
-      latestChangeRequest?.status !== "PENDING";
-    const isEditingThis = editingOrder?.id === o.id;
+  const changeRequestModal = () => {
+    if (!viewRequest) return null;
 
-    if (canEditSizes)
-      return (
-        <button
-          type="button"
-          disabled={isEditingThis}
-          onClick={() => {
-            setEditingOrder(o);
-            setPendingSizes({});
-          }}
+    const style = CHANGE_REQUEST_STYLES[viewRequest.status];
+    const order = myOrders.find((ord) => ord.id === viewRequest.orderId);
+    const cellStyle = {
+      padding: "6px",
+      borderBottom: "0.5px solid var(--border)",
+    };
+
+    return (
+      <Modal
+        title={`Size Change Request — ${viewRequest.orderNumber}`}
+        onClose={() => setViewRequest(null)}
+      >
+        <div
           style={{
-            fontWeight: 700,
-            color: "var(--sky-dark)",
-            background: "var(--sky)",
-            border: "none",
-            borderRadius: 8,
-            padding: "5px 10px",
-            cursor: isEditingThis ? "not-allowed" : "pointer",
-            opacity: isEditingThis ? 0.5 : 1,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: 14,
           }}
         >
-          {isEditingThis ? "Editing…" : "✏️ Edit Sizes"}
-        </button>
-      );
-  };
+          <span
+            className="txt-badge"
+            style={{
+              fontWeight: 800,
+              padding: "3px 10px",
+              borderRadius: 30,
+              background: style.bg,
+              color: style.color,
+            }}
+          >
+            {style.label}
+          </span>
+          <span style={{ fontSize: 11, color: "var(--text3)" }}>
+            Requested {new Date(viewRequest.requestedAt).toLocaleString()}
+          </span>
+        </div>
 
+        <table
+          style={{
+            width: "100%",
+            borderCollapse: "collapse",
+            fontSize: 13,
+          }}
+        >
+          <thead>
+            <tr>
+              {["Item", "Qty", "From", "", "To"].map((h) => (
+                <th
+                  key={h}
+                  style={{
+                    textAlign: "left",
+                    padding: "4px 6px",
+                    fontSize: 10,
+                    fontWeight: 800,
+                    letterSpacing: ".04em",
+                    textTransform: "uppercase",
+                    color: "var(--text3)",
+                    borderBottom: "1px solid var(--border)",
+                  }}
+                >
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {viewRequest.changes.map((c, i) => {
+              const qty = order?.items.find(
+                (it) => it.productId === c.productId,
+              )?.quantity;
+              return (
+                <tr key={i}>
+                  <td style={cellStyle}>{c.productName}</td>
+                  <td style={cellStyle}>×{qty ?? "—"}</td>
+                  <td style={{ ...cellStyle, color: "var(--text3)" }}>
+                    {displaySize(c.fromSize)}
+                  </td>
+                  <td style={cellStyle}>→</td>
+                  <td
+                    style={{
+                      ...cellStyle,
+                      fontWeight: 800,
+                      color: "var(--mint-dark)",
+                    }}
+                  >
+                    {displaySize(c.toSize)}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+
+        {viewRequest.status !== "PENDING" && (
+          <div
+            style={{
+              marginTop: 10,
+              fontSize: 11,
+              color: "var(--text3)",
+            }}
+          >
+            {viewRequest.status === "APPROVED" ? "Approved" : "Rejected"}{" "}
+            {viewRequest.reviewedAt
+              ? new Date(viewRequest.reviewedAt).toLocaleString()
+              : ""}
+          </div>
+        )}
+
+        {viewRequest.status === "REJECTED" && viewRequest.rejectionNote && (
+          <div
+            style={{
+              marginTop: 8,
+              background: "var(--peach)",
+              borderRadius: "var(--radius-sm)",
+              padding: "8px 10px",
+            }}
+          >
+            <div
+              style={{
+                fontSize: 11,
+                fontWeight: 800,
+                color: "var(--peach-dark)",
+                marginBottom: 2,
+              }}
+            >
+              Note from the school
+            </div>
+            <div style={{ fontSize: 12, color: "var(--peach-dark)" }}>
+              {viewRequest.rejectionNote}
+            </div>
+          </div>
+        )}
+      </Modal>
+    );
+  };
   const editOrderModal = () => {
     if (editingOrder)
       return (
-        <Modal>
+        <Modal onClose={closeEditPane}>
           <div
             style={{
               borderTop: "1px solid var(--border)",
@@ -4726,6 +4791,93 @@ function ParentOrders() {
       );
   };
 
+  const sizeEditButton = (o) => {
+    const latestChangeRequest = o.changeRequests?.[0];
+    const canEditSizes =
+      ["SUBMITTED", "REVIEW"].includes(o.status) &&
+      latestChangeRequest?.status !== "PENDING";
+
+    if (!canEditSizes) return null;
+
+    const isEditingThis = editingOrder?.id === o.id;
+    return (
+      <button
+        type="button"
+        disabled={isEditingThis}
+        onClick={() => {
+          setEditingOrder(o);
+          setPendingSizes({});
+        }}
+        style={{
+          fontWeight: 700,
+          color: "var(--sky-dark)",
+          background: "var(--sky)",
+          border: "none",
+          borderRadius: 8,
+          padding: "5px 10px",
+          cursor: isEditingThis ? "not-allowed" : "pointer",
+          opacity: isEditingThis ? 0.5 : 1,
+        }}
+      >
+        {isEditingThis ? "Editing…" : "✏️ Edit Sizes"}
+      </button>
+    );
+  };
+
+  const getChangeRequests = (o) => {
+    const changeRequests = o.changeRequests;
+    if (changeRequests && changeRequests.length > 0)
+      return changeRequests.map((r) => {
+        const crStyle = r ? CHANGE_REQUEST_STYLES[r.status] : null;
+        return (
+          <div
+            style={{
+              marginTop: 8,
+              paddingTop: 8,
+              borderTop: "1px solid var(--bg3)",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              flexWrap: "wrap",
+            }}
+          >
+            <span
+              className="txt-badge"
+              style={{
+                fontWeight: 800,
+                whiteSpace: "nowrap",
+                padding: "3px 10px",
+                borderRadius: 30,
+                background: crStyle.bg,
+                color: crStyle.color,
+              }}
+            >
+              {crStyle.label}
+            </span>
+            <span style={{ fontSize: 11, color: "var(--text3)" }}>
+             Requested at {new Date(r.requestedAt).toLocaleString()}
+            </span>
+            <button
+              type="button"
+              onClick={() => setViewRequest(r)}
+              style={{
+                background: "none",
+                border: "none",
+                color: "var(--sky-dark)",
+                fontSize: 11,
+                fontWeight: 700,
+                textDecoration: "underline",
+                cursor: "pointer",
+                padding: 0,
+              }}
+            >
+              View Request Details
+            </button>
+          </div>
+        );
+      });
+  };
+
   if (loading)
     return (
       <div
@@ -4777,7 +4929,6 @@ function ParentOrders() {
         }}
       >
         {myOrders.map((o) => {
-          const latestChangeRequest = o.changeRequests?.[0];
           return (
             <div
               key={o.id}
@@ -4819,24 +4970,6 @@ function ParentOrders() {
                 <span style={{ marginLeft: 5 }}>
                   <Badge status={o.status} />
                 </span>
-                {latestChangeRequest && (
-                  <span
-                    className="txt-badge"
-                    style={{
-                      fontWeight: 800,
-                      whiteSpace: "nowrap",
-                      padding: "3px 10px",
-                      borderRadius: 30,
-                      background:
-                        CHANGE_REQUEST_STYLES[latestChangeRequest.status].bg,
-                      color:
-                        CHANGE_REQUEST_STYLES[latestChangeRequest.status].color,
-                      marginLeft: "5px",
-                    }}
-                  >
-                    {CHANGE_REQUEST_STYLES[latestChangeRequest.status].label}
-                  </span>
-                )}
               </div>
               <div style={{ fontWeight: 700, marginBottom: 2 }}>
                 {o.childName} · {o.childClass}
@@ -4845,26 +4978,12 @@ function ParentOrders() {
                 className="txt-base"
                 style={{ color: "var(--text)", marginBottom: 6 }}
               >
-                {o.items.map((item, i) => {
-                  const change = findItemChange(latestChangeRequest, item);
-                  return (
-                    <div key={i}>
-                      {item.productName} {displaySize(item.size)} ×
-                      {item.quantity}
-                      {change && (
-                        <span
-                          style={{
-                            color: "var(--lemon-dark)",
-                            fontWeight: 800,
-                          }}
-                        >
-                          {" "}
-                          (→ {displaySize(change.toSize)})
-                        </span>
-                      )}
-                    </div>
-                  );
-                })}
+                {o.items
+                  .map(
+                    (i) =>
+                      `${i.productName} ${displaySize(i.size)} ×${i.quantity}`,
+                  )
+                  .join(", ")}
               </div>
               <div
                 style={{
@@ -4893,10 +5012,12 @@ function ParentOrders() {
                   </span>
                 )}
               </div>
+              {getChangeRequests(o)}
             </div>
           );
         })}
         {detailModal()}
+        {changeRequestModal()}
         {editOrderModal()}
       </div>
     </div>
