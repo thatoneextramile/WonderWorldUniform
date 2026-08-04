@@ -5301,7 +5301,7 @@ function AdminDashboard() {
             ),
         }))
         .sort((a, b) => b.totalQty - a.totalQty)
-        .slice(0, 6);
+        // .slice(0, 6);
 
   const maxQty = Math.max(...productQtys.map((p) => p.totalQty), 1);
 
