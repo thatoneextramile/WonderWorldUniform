@@ -4855,7 +4855,7 @@ function ParentOrders() {
               {crStyle.label}
             </span>
             <span style={{ fontSize: 11, color: "var(--text3)" }}>
-             Requested at {new Date(r.requestedAt).toLocaleString()}
+              Requested at {new Date(r.requestedAt).toLocaleString()}
             </span>
             <button
               type="button"
@@ -5838,7 +5838,9 @@ function AdminDashboard() {
           label="Change Requests"
           value={
             stats?.pendingChangeRequests ??
-            orders.filter((o) => o.changeRequests?.length > 0).length
+            orders.filter((o) =>
+              o.changeRequests?.some((cr) => cr.status === "PENDING"),
+            ).length
           }
           sub="Needs action"
           color="var(--peach-dark)"
@@ -5876,7 +5878,10 @@ function AdminDashboard() {
             <tbody>
               {orders.slice(0, 5).map((o) => {
                 const amount = parseFloat(o.totalAmount);
-                const hasPendingChange = o.changeRequests?.length > 0;
+                // Recent Orders row flag
+                const hasPendingChange = o.changeRequests?.some(
+                  (cr) => cr.status === "PENDING",
+                );
                 return (
                   <tr
                     key={o.id}
@@ -8039,8 +8044,93 @@ function AdminOrders() {
   };
 
   const getChangeRequestApproval = (detail) => {
+    const getHistoricalRequest = () => {
+      const resolved = (detail.changeRequests || []).filter(
+        (r) => r.status !== "PENDING",
+      );
+      if (resolved.length === 0) return null;
+      return (
+        <div style={{ marginTop: 16 }}>
+          <div
+            style={{
+              fontSize: 12,
+              fontWeight: 700,
+              color: "var(--text3)",
+              marginBottom: 8,
+            }}
+          >
+            Past Change Requests
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {resolved.map((cr) => {
+              const [bg, col] =
+                cr.status === "APPROVED"
+                  ? ["var(--mint)", "var(--mint-dark)"]
+                  : ["var(--peach)", "var(--peach-dark)"];
+              return (
+                <div
+                  key={cr.id}
+                  style={{
+                    border: "1px solid var(--border)",
+                    borderRadius: "var(--radius-sm)",
+                    padding: 10,
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginBottom: 6,
+                    }}
+                  >
+                    <span
+                      className="txt-badge"
+                      style={{
+                        fontWeight: 800,
+                        padding: "3px 10px",
+                        borderRadius: 30,
+                        background: bg,
+                        color: col,
+                      }}
+                    >
+                      {cr.status === "APPROVED" ? "✓ Approved" : "✕ Rejected"}
+                    </span>
+                    <span style={{ fontSize: 11, color: "var(--text3)" }}>
+                      {cr.reviewedAt
+                        ? new Date(cr.reviewedAt).toLocaleDateString()
+                        : ""}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 12 }}>
+                    {cr.changes.map((c, i) => (
+                      <div key={i}>
+                        {c.productName}: {displaySize(c.fromSize)} →{" "}
+                        {displaySize(c.toSize)}
+                      </div>
+                    ))}
+                  </div>
+                  {cr.status === "REJECTED" && cr.rejectionNote && (
+                    <div
+                      style={{
+                        marginTop: 6,
+                        fontSize: 11,
+                        color: "var(--peach-dark)",
+                      }}
+                    >
+                      Note: {cr.rejectionNote}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    };
     if (detail && detail.changeRequests?.length > 0) {
-      const cr = detail.changeRequests[0];
+      const cr = detail.changeRequests?.find((r) => r.status === "PENDING");
+      if (!cr) return getHistoricalRequest();
       return (
         <div
           style={{
@@ -8226,6 +8316,7 @@ function AdminOrders() {
               </div>
             )}
           </div>
+          {getHistoricalRequest()}
         </div>
       );
     }
@@ -8457,8 +8548,11 @@ function AdminOrders() {
                     style={{
                       cursor: "pointer",
                       transition: "background .15s",
-                      background:
-                        o.changeRequests?.length > 0 ? "#fffaf0" : undefined,
+                      background: o.changeRequests?.some(
+                        (cr) => cr.status === "PENDING",
+                      )
+                        ? "#fffaf0"
+                        : undefined,
                     }}
                     onClick={() => {
                       setDetail(o);
@@ -8533,7 +8627,9 @@ function AdminOrders() {
                       }}
                     >
                       <Badge status={o.status} />
-                      {o.changeRequests?.length > 0 && (
+                      {o.changeRequests?.some(
+                        (cr) => cr.status === "PENDING",
+                      ) && (
                         <span
                           className="txt-badge"
                           style={{
