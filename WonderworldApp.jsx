@@ -764,6 +764,24 @@ const STATUS_COLORS = {
   CANCELLED: "#fdf0e6:#c45e18",
 };
 
+const CHANGE_REQUEST_STYLES = {
+  PENDING: {
+    bg: "var(--peach)",
+    color: "var(--peach-dark)",
+    label: "⏳ Size Change Request Pending",
+  },
+  APPROVED: {
+    bg: "var(--mint)",
+    color: "var(--mint-dark)",
+    label: "✓ Size Change Request Approved",
+  },
+  REJECTED: {
+    bg: "var(--peach)",
+    color: "var(--peach-dark)",
+    label: "✕ Size Change Request Rejected",
+  },
+};
+
 // ─── CONTEXT ──────────────────────────────────────────────────
 const AppCtx = createContext(null);
 function useApp() {
@@ -793,7 +811,7 @@ ${FONTS}
   --font-size-table: 13px;
 }
 body { font-family:var(--font-body); color:var(--text); background:#fff; min-height:100vh; }
-button { cursor:pointer; font-family:var(--font-body); }
+button { cursor:pointer; font-family:var(--font-body);  }
 input,select,textarea { font-family:var(--font-body); }
 ::-webkit-scrollbar { width:5px; height:5px; }
 ::-webkit-scrollbar-track { background:transparent; }
@@ -844,7 +862,7 @@ body          { font-size:15px; }
 .txt-section  { font-family:var(--font-display); font-size:17px; font-weight:700; color:var(--text); }
 .txt-stat-val { font-family:var(--font-display); font-size:22px; font-weight:900; }
 .txt-stat-lbl { font-size:10px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--text3); }
-.txt-badge    { font-size:10px; font-weight:800; white-space:nowrap; }
+.txt-badge    { font-size:12px; font-weight:800; white-space:nowrap; }
 .txt-th       { font-size:13px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:var(--text3); }
 .txt-card-h3  { font-size:14px; font-weight:700; }
 `;
@@ -4243,7 +4261,6 @@ function ParentCart({ cartForm, setCartForm }) {
     </div>
   );
 }
-
 function ParentOrders() {
   const { state, dispatch } = useApp();
   const [myOrders, setMyOrders] = useState(
@@ -4251,9 +4268,11 @@ function ParentOrders() {
   );
   const [detail, setDetail] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [editingOrder, setEditingOrder] = useState(null);
+  const [viewRequest, setViewRequest] = useState(null);
 
-  useEffect(() => {
-    api("/api/orders/mine")
+  function loadOrders() {
+    return api("/api/orders/mine")
       .then((orders) => {
         setMyOrders(orders);
         dispatch({ type: "SET_ORDERS", orders });
@@ -4262,133 +4281,68 @@ function ParentOrders() {
         setMyOrders(
           state.orders.filter((o) => o.parentId === state.currentUser?.id),
         ),
-      )
-      .finally(() => setLoading(false));
+      );
+  }
+
+  useEffect(() => {
+    loadOrders().finally(() => setLoading(false));
   }, []);
 
-  if (loading)
-    return (
-      <div
-        style={{
-          textAlign: "center",
-          padding: 40,
-          color: "var(--text3)",
-          fontSize: 13,
-        }}
-      >
-        Loading your orders…
-      </div>
-    );
+  const [pendingSizes, setPendingSizes] = useState({});
 
-  if (myOrders.length === 0)
-    return (
-      <EmptyState
-        emoji="📋"
-        message="No orders yet — place your first order!"
-      />
-    );
+  function closeEditPane() {
+    setEditingOrder(null);
+    setPendingSizes({});
+  }
 
-  return (
-    <div className="animate-fade">
-      <div style={{ marginBottom: 28 }}>
-        <h2
-          style={{
-            fontSize: 24,
-            fontWeight: 800,
-            color: "#111",
-            letterSpacing: "-.02em",
-            marginBottom: 4,
-          }}
-        >
-          My Orders
-        </h2>
-        <p style={{ fontSize: 14, color: "#888" }}>
-          {myOrders.length} order{myOrders.length !== 1 ? "s" : ""}
-        </p>
-      </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        {myOrders.map((o) => (
-          <div
-            key={o.id}
-            onClick={() => setDetail(o)}
-            style={{
-              background: "#fff",
-              border: "1.5px solid #e5e7eb",
-              borderRadius: 12,
-              padding: "18px 20px",
-              cursor: "pointer",
-              transition: "border-color .15s, box-shadow .15s",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = "#111";
-              e.currentTarget.style.boxShadow = "0 4px 16px rgba(0,0,0,.08)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = "#e5e7eb";
-              e.currentTarget.style.boxShadow = "none";
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                marginBottom: 8,
-              }}
-            >
-              <span
-                style={{ fontSize: 11, fontWeight: 700, color: "var(--text3)" }}
-              >
-                {o.orderNumber} ·{" "}
-                {o.createdAt ? new Date(o.createdAt).toLocaleDateString() : ""}
-              </span>
-              <Badge status={o.status} />
-            </div>
-            <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 2 }}>
-              {o.childName} · {o.childClass}
-            </div>
-            <div
-              style={{ fontSize: 12, color: "var(--text3)", marginBottom: 6 }}
-            >
-              {o.items
-                .map(
-                  (i) =>
-                    `${i.productName} ${displaySize(i.size)} ×${i.quantity}`,
-                )
-                .join(", ")}
-            </div>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <span
-                style={{
-                  fontSize: 14,
-                  fontWeight: 800,
-                  color: "var(--sky-dark)",
-                }}
-              >
-                ${Number(o.totalAmount).toFixed(2)}
-              </span>
-              {o.discountRate > 0 && (
-                <span
-                  style={{
-                    fontSize: 10,
-                    color: "var(--peach-dark)",
-                    fontWeight: 700,
-                  }}
-                >
-                  {Math.round(o.discountRate * 100)}% discount applied
-                </span>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-      {detail && (
+  function handleSizeChange(itemIndex, newSize) {
+    setPendingSizes((prev) => ({ ...prev, [itemIndex]: newSize }));
+  }
+
+  async function submitChangeRequest() {
+    const changes = editingOrder.items
+      .map((item, i) => ({ ...item, index: i }))
+      .filter(
+        (item) =>
+          pendingSizes[item.index] && pendingSizes[item.index] !== item.size,
+      )
+      .map((item) => ({
+        productId: item.productId,
+        productName: item.productName,
+        fromSize: item.size,
+        toSize: pendingSizes[item.index],
+      }));
+
+    try {
+      await api(`/api/orders/${editingOrder.id}/change-request`, {
+        method: "POST",
+        body: { changes },
+      });
+      await loadOrders();
+      dispatch({
+        type: "SET_TOAST",
+        message:
+          "Size change request submitted — you'll be notified once it's reviewed.",
+      });
+    } catch (err) {
+      dispatch({
+        type: "SET_TOAST",
+        message: err.message || "Failed to submit change request",
+      });
+    } finally {
+      closeEditPane();
+    }
+  }
+
+  const hasChanges = editingOrder
+    ? editingOrder.items.some(
+        (item, i) => pendingSizes[i] && pendingSizes[i] !== item.size,
+      )
+    : false;
+
+  const detailModal = () => {
+    if (detail) {
+      return (
         <Modal
           title={`Order ${detail.orderNumber}`}
           onClose={() => setDetail(null)}
@@ -4401,7 +4355,9 @@ function ParentOrders() {
               marginBottom: 14,
             }}
           >
-            <Badge status={detail.status} />
+            <div>
+              <Badge status={detail.status} />
+            </div>
             <span style={{ fontSize: 11, color: "var(--text3)" }}>
               {detail.createdAt
                 ? new Date(detail.createdAt).toLocaleDateString()
@@ -4522,7 +4478,548 @@ function ParentOrders() {
             </div>
           </div>
         </Modal>
-      )}
+      );
+    }
+  };
+
+  const changeRequestModal = () => {
+    if (!viewRequest) return null;
+
+    const style = CHANGE_REQUEST_STYLES[viewRequest.status];
+    const order = myOrders.find((ord) => ord.id === viewRequest.orderId);
+    const cellStyle = {
+      padding: "6px",
+      borderBottom: "0.5px solid var(--border)",
+    };
+
+    return (
+      <Modal
+        title={`Size Change Request — ${viewRequest.orderNumber}`}
+        onClose={() => setViewRequest(null)}
+      >
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: 14,
+          }}
+        >
+          <span
+            className="txt-badge"
+            style={{
+              fontWeight: 800,
+              padding: "3px 10px",
+              borderRadius: 30,
+              background: style.bg,
+              color: style.color,
+            }}
+          >
+            {style.label}
+          </span>
+          <span style={{ fontSize: 11, color: "var(--text3)" }}>
+            Requested {new Date(viewRequest.requestedAt).toLocaleString()}
+          </span>
+        </div>
+
+        <table
+          style={{
+            width: "100%",
+            borderCollapse: "collapse",
+            fontSize: 13,
+          }}
+        >
+          <thead>
+            <tr>
+              {["Item", "Qty", "From", "", "To"].map((h) => (
+                <th
+                  key={h}
+                  style={{
+                    textAlign: "left",
+                    padding: "4px 6px",
+                    fontSize: 10,
+                    fontWeight: 800,
+                    letterSpacing: ".04em",
+                    textTransform: "uppercase",
+                    color: "var(--text3)",
+                    borderBottom: "1px solid var(--border)",
+                  }}
+                >
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {viewRequest.changes.map((c, i) => {
+              const qty = order?.items.find(
+                (it) => it.productId === c.productId,
+              )?.quantity;
+              return (
+                <tr key={i}>
+                  <td style={cellStyle}>{c.productName}</td>
+                  <td style={cellStyle}>×{qty ?? "—"}</td>
+                  <td style={{ ...cellStyle, color: "var(--text3)" }}>
+                    {displaySize(c.fromSize)}
+                  </td>
+                  <td style={cellStyle}>→</td>
+                  <td
+                    style={{
+                      ...cellStyle,
+                      fontWeight: 800,
+                      color: "var(--mint-dark)",
+                    }}
+                  >
+                    {displaySize(c.toSize)}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+
+        {viewRequest.status !== "PENDING" && (
+          <div
+            style={{
+              marginTop: 10,
+              fontSize: 11,
+              color: "var(--text3)",
+            }}
+          >
+            {viewRequest.status === "APPROVED" ? "Approved" : "Rejected"}{" "}
+            {viewRequest.reviewedAt
+              ? new Date(viewRequest.reviewedAt).toLocaleString()
+              : ""}
+          </div>
+        )}
+
+        {viewRequest.status === "REJECTED" && viewRequest.rejectionNote && (
+          <div
+            style={{
+              marginTop: 8,
+              background: "var(--peach)",
+              borderRadius: "var(--radius-sm)",
+              padding: "8px 10px",
+            }}
+          >
+            <div
+              style={{
+                fontSize: 11,
+                fontWeight: 800,
+                color: "var(--peach-dark)",
+                marginBottom: 2,
+              }}
+            >
+              Note from the school
+            </div>
+            <div style={{ fontSize: 12, color: "var(--peach-dark)" }}>
+              {viewRequest.rejectionNote}
+            </div>
+          </div>
+        )}
+      </Modal>
+    );
+  };
+  const editOrderModal = () => {
+    if (editingOrder)
+      return (
+        <Modal onClose={closeEditPane}>
+          <div
+            style={{
+              borderTop: "1px solid var(--border)",
+              background: "var(--bg2)",
+              padding: "18px 20px",
+              borderBottomLeftRadius: 12,
+              borderBottomRightRadius: 12,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: 14,
+              }}
+            >
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 13 }}>
+                  Editing sizes — {editingOrder.orderNumber}
+                </div>
+                <div style={{ fontSize: 11, color: "var(--text3)" }}>
+                  {editingOrder.childName} · {editingOrder.childClass}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={closeEditPane}
+                style={{
+                  fontWeight: 700,
+                  color: "var(--text2)",
+                  background: "transparent",
+                  border: "1px solid var(--border)",
+                  borderRadius: 8,
+                  padding: "5px 10px",
+                  cursor: "pointer",
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+
+            <div
+              style={{
+                background: "#fff",
+                border: "1px solid var(--border)",
+                borderRadius: 10,
+                padding: "4px 14px",
+                marginBottom: 14,
+              }}
+            >
+              {editingOrder.items.map((item, i) => {
+                const product = state.products.find(
+                  (p) => p.id === item.productId,
+                );
+                const sizeOptions = sortSizes(
+                  product?.sizes?.length ? product.sizes : [item.size],
+                );
+                const newSize = pendingSizes[i];
+                const isChanged = newSize && newSize !== item.size;
+                return (
+                  <div
+                    key={i}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 10,
+                      padding: "10px 0",
+                      borderBottom:
+                        i < editingOrder.items.length - 1
+                          ? "1px solid var(--bg3)"
+                          : "none",
+                      background: isChanged ? "var(--lemon)" : "transparent",
+                      margin: isChanged ? "0 -14px" : 0,
+                      paddingLeft: isChanged ? 14 : 0,
+                      paddingRight: isChanged ? 14 : 0,
+                      borderRadius: isChanged ? 8 : 0,
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: 13 }}>
+                        {item.productName}
+                      </div>
+                      <div style={{ fontSize: 11, color: "var(--text3)" }}>
+                        Qty ×{item.quantity} · $
+                        {Number(item.unitPrice).toFixed(2)} ea
+                      </div>
+                    </div>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                      }}
+                    >
+                      {isChanged && (
+                        <span
+                          style={{
+                            fontSize: 11,
+                            fontWeight: 800,
+                            color: "var(--lemon-dark)",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {displaySize(item.size)} → {displaySize(newSize)}
+                        </span>
+                      )}
+                      <select
+                        value={newSize || item.size}
+                        onChange={(e) => handleSizeChange(i, e.target.value)}
+                        style={{
+                          padding: "6px 10px",
+                          border: "1.5px solid var(--border)",
+                          borderRadius: 8,
+                          fontWeight: 700,
+                          background: "#fff",
+                          color: "var(--text)",
+                          outline: "none",
+                        }}
+                      >
+                        {sizeOptions.map((s) => (
+                          <option key={s} value={s}>
+                            {displaySize(s)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {hasChanges ? (
+              <button
+                type="button"
+                onClick={submitChangeRequest}
+                style={{
+                  width: "100%",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  color: "#fff",
+                  background: "var(--sky-dark)",
+                  border: "none",
+                  borderRadius: 8,
+                  padding: "10px 16px",
+                  cursor: "pointer",
+                }}
+              >
+                Submit Order Update Request
+              </button>
+            ) : (
+              <div
+                style={{
+                  fontSize: 11,
+                  color: "var(--text3)",
+                  textAlign: "center",
+                }}
+              >
+                Change a size above to submit an update request.
+              </div>
+            )}
+          </div>
+        </Modal>
+      );
+  };
+
+  const sizeEditButton = (o) => {
+    const latestChangeRequest = o.changeRequests?.[0];
+    const canEditSizes =
+      ["SUBMITTED", "REVIEW"].includes(o.status) &&
+      latestChangeRequest?.status !== "PENDING";
+
+    if (!canEditSizes) return null;
+
+    const isEditingThis = editingOrder?.id === o.id;
+    return (
+      <button
+        type="button"
+        disabled={isEditingThis}
+        onClick={() => {
+          setEditingOrder(o);
+          setPendingSizes({});
+        }}
+        style={{
+          fontWeight: 700,
+          color: "var(--sky-dark)",
+          background: "var(--sky)",
+          border: "none",
+          borderRadius: 8,
+          padding: "5px 10px",
+          cursor: isEditingThis ? "not-allowed" : "pointer",
+          opacity: isEditingThis ? 0.5 : 1,
+        }}
+      >
+        {isEditingThis ? "Editing…" : "✏️ Edit Sizes"}
+      </button>
+    );
+  };
+
+  const getChangeRequests = (o) => {
+    const changeRequests = o.changeRequests;
+    if (changeRequests && changeRequests.length > 0)
+      return changeRequests.map((r) => {
+        const crStyle = r ? CHANGE_REQUEST_STYLES[r.status] : null;
+        return (
+          <div
+            style={{
+              marginTop: 8,
+              paddingTop: 8,
+              borderTop: "1px solid var(--bg3)",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              flexWrap: "wrap",
+            }}
+          >
+            <span
+              className="txt-badge"
+              style={{
+                fontWeight: 800,
+                whiteSpace: "nowrap",
+                padding: "3px 10px",
+                borderRadius: 30,
+                background: crStyle.bg,
+                color: crStyle.color,
+              }}
+            >
+              {crStyle.label}
+            </span>
+            <span style={{ fontSize: 11, color: "var(--text3)" }}>
+              Requested at {new Date(r.requestedAt).toLocaleString()}
+            </span>
+            <button
+              type="button"
+              onClick={() => setViewRequest(r)}
+              style={{
+                background: "none",
+                border: "none",
+                color: "var(--sky-dark)",
+                fontSize: 11,
+                fontWeight: 700,
+                textDecoration: "underline",
+                cursor: "pointer",
+                padding: 0,
+              }}
+            >
+              View Request Details
+            </button>
+          </div>
+        );
+      });
+  };
+
+  if (loading)
+    return (
+      <div
+        style={{
+          textAlign: "center",
+          padding: 40,
+          color: "var(--text3)",
+          fontSize: 13,
+        }}
+      >
+        Loading your orders…
+      </div>
+    );
+
+  if (myOrders.length === 0)
+    return (
+      <EmptyState
+        emoji="📋"
+        message="No orders yet — place your first order!"
+      />
+    );
+
+  return (
+    <div className="animate-fade">
+      <div style={{ marginBottom: 28 }}>
+        <h2
+          style={{
+            fontSize: 24,
+            fontWeight: 800,
+            color: "#111",
+            letterSpacing: "-.02em",
+            marginBottom: 4,
+          }}
+        >
+          My Orders
+        </h2>
+        <p style={{ fontSize: 14, color: "#888" }}>
+          {myOrders.length} order{myOrders.length !== 1 ? "s" : ""}
+        </p>
+      </div>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 12,
+          background: "#fff",
+          border: "1.5px solid #e5e7eb",
+          borderRadius: 12,
+        }}
+      >
+        {myOrders.map((o) => {
+          return (
+            <div
+              key={o.id}
+              style={{
+                padding: "18px 20px",
+              }}
+              className="txt-sm"
+            >
+              <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+                <button
+                  type="button"
+                  onClick={() => setDetail(o)}
+                  style={{
+                    fontWeight: 700,
+                    color: "#111",
+                    background: "transparent",
+                    border: "1px solid #e5e7eb",
+                    borderRadius: 8,
+                    padding: "5px 10px",
+                    cursor: "pointer",
+                  }}
+                >
+                  View Details
+                </button>
+                {sizeEditButton(o)}
+              </div>
+              <div>
+                <span
+                  style={{
+                    fontWeight: 700,
+                    color: "var(--text2)",
+                  }}
+                >
+                  {o.orderNumber} ·{" "}
+                  {o.createdAt
+                    ? new Date(o.createdAt).toLocaleDateString()
+                    : ""}
+                </span>
+                <span style={{ marginLeft: 5 }}>
+                  <Badge status={o.status} />
+                </span>
+              </div>
+              <div style={{ fontWeight: 700, marginBottom: 2 }}>
+                {o.childName} · {o.childClass}
+              </div>
+              <div
+                className="txt-base"
+                style={{ color: "var(--text)", marginBottom: 6 }}
+              >
+                {o.items
+                  .map(
+                    (i) =>
+                      `${i.productName} ${displaySize(i.size)} ×${i.quantity}`,
+                  )
+                  .join(", ")}
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: 14,
+                    fontWeight: 800,
+                    color: "var(--sky-dark)",
+                  }}
+                >
+                  ${Number(o.totalAmount).toFixed(2)}
+                </span>
+                {o.discountRate > 0 && (
+                  <span
+                    style={{
+                      color: "var(--peach-dark)",
+                      fontWeight: 700,
+                    }}
+                  >
+                    {Math.round(o.discountRate * 100)}% discount applied
+                  </span>
+                )}
+              </div>
+              {getChangeRequests(o)}
+            </div>
+          );
+        })}
+        {detailModal()}
+        {changeRequestModal()}
+        {editOrderModal()}
+      </div>
     </div>
   );
 }
@@ -5300,7 +5797,7 @@ function AdminDashboard() {
               0,
             ),
         }))
-        .sort((a, b) => b.totalQty - a.totalQty)
+        .sort((a, b) => b.totalQty - a.totalQty);
         // .slice(0, 6);
 
   const maxQty = Math.max(...productQtys.map((p) => p.totalQty), 1);
@@ -5337,6 +5834,17 @@ function AdminDashboard() {
           sub="Needs action"
           color="var(--peach-dark)"
         />
+        <StatCard
+          label="Change Requests"
+          value={
+            stats?.pendingChangeRequests ??
+            orders.filter((o) =>
+              o.changeRequests?.some((cr) => cr.status === "PENDING"),
+            ).length
+          }
+          sub="Needs action"
+          color="var(--peach-dark)"
+        />
       </div>
 
       <Card style={{ marginBottom: 14 }}>
@@ -5349,28 +5857,58 @@ function AdminDashboard() {
           >
             <thead>
               <tr>
-                {["Order", "Child", "Location", "Total", "Status"].map((h) => (
-                  <th
-                    key={h}
-                    className="txt-th"
-                    style={{
-                      padding: "6px 8px",
-                      textAlign: "left",
-                      borderBottom: "1px solid var(--border)",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {h}
-                  </th>
-                ))}
+                {["", "Order", "Child", "Location", "Total", "Status"].map(
+                  (h) => (
+                    <th
+                      key={h}
+                      className="txt-th"
+                      style={{
+                        padding: "6px 8px",
+                        textAlign: "left",
+                        borderBottom: "1px solid var(--border)",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {h}
+                    </th>
+                  ),
+                )}
               </tr>
             </thead>
             <tbody>
               {orders.slice(0, 5).map((o) => {
                 const amount = parseFloat(o.totalAmount);
+                // Recent Orders row flag
+                const hasPendingChange = o.changeRequests?.some(
+                  (cr) => cr.status === "PENDING",
+                );
                 return (
-                  <tr key={o.id}>
+                  <tr
+                    key={o.id}
+                    style={
+                      hasPendingChange ? { background: "#fffaf0" } : undefined
+                    }
+                  >
                     {[
+                      hasPendingChange ? (
+                        <span
+                          title="Size change request pending"
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            width: 16,
+                            height: 16,
+                            borderRadius: "50%",
+                            background: "var(--peach-dark)",
+                            color: "#fff",
+                            fontSize: 10,
+                            fontWeight: 900,
+                          }}
+                        >
+                          !
+                        </span>
+                      ) : null,
                       o.orderNumber,
                       `${o.childName} · ${o.childClass}`,
                       state.locations.find((l) => l.id === o.locationId)
@@ -7246,6 +7784,8 @@ function AdminOrders() {
   const [expandedItems, setExpandedItems] = useState(new Set());
   const [filterSize, setFilterSize] = useState(""); // ← add
   const [filterCategory, setFilterCategory] = useState(""); // ← add
+  const [rejectingId, setRejectingId] = useState(null);
+  const [rejectNote, setRejectNote] = useState("");
 
   const allSizes = useMemo(
     () => sortSizes([...new Set(state.products.flatMap((p) => p.sizes || []))]),
@@ -7304,6 +7844,55 @@ function AdminOrders() {
       `${API_BASE_URL}/api/admin/orders/export?token=${token}`,
       "_blank",
     );
+  }
+
+  async function approveChangeRequest(changeRequestId) {
+    try {
+      const updatedOrder = await api(
+        `/api/admin/change-requests/${changeRequestId}/approve`,
+        {
+          method: "PUT",
+        },
+      );
+      setAllOrders((prev) =>
+        prev.map((o) => (o.id === updatedOrder.id ? updatedOrder : o)),
+      );
+      setDetail(updatedOrder);
+      dispatch({
+        type: "SET_TOAST",
+        message: "Change request approved — order updated.",
+      });
+    } catch (err) {
+      dispatch({
+        type: "SET_TOAST",
+        message: err.message || "Failed to approve request",
+      });
+    }
+  }
+
+  async function rejectChangeRequest(changeRequestId) {
+    if (!rejectNote.trim()) return;
+    try {
+      const updatedOrder = await api(
+        `/api/admin/change-requests/${changeRequestId}/reject`,
+        {
+          method: "PUT",
+          body: { note: rejectNote },
+        },
+      );
+      setAllOrders((prev) =>
+        prev.map((o) => (o.id === updatedOrder.id ? updatedOrder : o)),
+      );
+      setDetail(updatedOrder);
+      setRejectingId(null);
+      setRejectNote("");
+      dispatch({ type: "SET_TOAST", message: "Change request rejected." });
+    } catch (err) {
+      dispatch({
+        type: "SET_TOAST",
+        message: err.message || "Failed to reject request",
+      });
+    }
   }
 
   function formatItemsText(items) {
@@ -7383,9 +7972,16 @@ function AdminOrders() {
       </>
     );
   };
-
   const getStatusSelect = (o) => {
-    if (o.status === "CANCELLED" || o.status === "PICKED_UP") {
+    const hasPendingChangeRequest =
+      ["SUBMITTED", "REVIEW"].includes(o.status) &&
+      o.changeRequests?.some((cr) => cr.status === "PENDING");
+
+    if (
+      o.status === "CANCELLED" ||
+      o.status === "PICKED_UP" ||
+      hasPendingChangeRequest
+    ) {
       const [bg, col] = (STATUS_COLORS[o.status] || "#eef0f4:#5a6072").split(
         ":",
       );
@@ -7403,6 +7999,18 @@ function AdminOrders() {
           >
             {STATUS_LABELS[o.status]}
           </span>
+          {hasPendingChangeRequest && (
+            <span
+              style={{
+                marginLeft: 8,
+                fontSize: 11,
+                color: "var(--peach-dark)",
+                fontWeight: 700,
+              }}
+            >
+              🔒 Resolve the size change request first
+            </span>
+          )}
         </span>
       );
     } else
@@ -7432,6 +8040,337 @@ function AdminOrders() {
             ))}
           </select>
         </>
+      );
+  };
+
+  const getChangeRequestApproval = (detail) => {
+    const getHistoricalRequest = () => {
+      const resolved = (detail.changeRequests || []).filter(
+        (r) => r.status !== "PENDING",
+      );
+      if (resolved.length === 0) return null;
+      return (
+        <div style={{ marginTop: 16 }}>
+          <div
+            style={{
+              fontSize: 12,
+              fontWeight: 700,
+              color: "var(--text3)",
+              marginBottom: 8,
+            }}
+          >
+            Past Change Requests
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {resolved.map((cr) => {
+              const [bg, col] =
+                cr.status === "APPROVED"
+                  ? ["var(--mint)", "var(--mint-dark)"]
+                  : ["var(--peach)", "var(--peach-dark)"];
+              return (
+                <div
+                  key={cr.id}
+                  style={{
+                    border: "1px solid var(--border)",
+                    borderRadius: "var(--radius-sm)",
+                    padding: 10,
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginBottom: 6,
+                    }}
+                  >
+                    <span
+                      className="txt-badge"
+                      style={{
+                        fontWeight: 800,
+                        padding: "3px 10px",
+                        borderRadius: 30,
+                        background: bg,
+                        color: col,
+                      }}
+                    >
+                      {cr.status === "APPROVED" ? "✓ Approved" : "✕ Rejected"}
+                    </span>
+                    <span style={{ fontSize: 11, color: "var(--text3)" }}>
+                      {cr.reviewedAt
+                        ? new Date(cr.reviewedAt).toLocaleDateString()
+                        : ""}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 12 }}>
+                    {cr.changes.map((c, i) => (
+                      <div key={i}>
+                        {c.productName}: {displaySize(c.fromSize)} →{" "}
+                        {displaySize(c.toSize)}
+                      </div>
+                    ))}
+                  </div>
+                  {cr.status === "REJECTED" && cr.rejectionNote && (
+                    <div
+                      style={{
+                        marginTop: 6,
+                        fontSize: 11,
+                        color: "var(--peach-dark)",
+                      }}
+                    >
+                      Note: {cr.rejectionNote}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    };
+    if (detail && detail.changeRequests?.length > 0) {
+      const cr = detail.changeRequests?.find((r) => r.status === "PENDING");
+      if (!cr) return getHistoricalRequest();
+      return (
+        <div
+          style={{
+            marginTop: 16,
+            border: "1px solid var(--border)",
+            borderRadius: "var(--radius)",
+            overflow: "hidden",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              padding: "10px 14px",
+              background: "var(--bg2)",
+              borderBottom: "1px solid var(--border)",
+            }}
+          >
+            <span style={{ fontWeight: 700, fontSize: 13 }}>
+              {detail.childName} · {detail.childClass}
+            </span>
+            <span style={{ fontSize: 11, color: "var(--text3)" }}>
+              Requested {new Date(cr.requestedAt).toLocaleDateString()}
+            </span>
+          </div>
+          <div style={{ padding: "10px 14px" }}>
+            <table
+              style={{
+                width: "100%",
+                borderCollapse: "collapse",
+                fontSize: 12,
+              }}
+            >
+              <thead>
+                <tr>
+                  {["Item", "Qty", "Current Size", "", "Requested Size"].map(
+                    (h) => (
+                      <th
+                        key={h}
+                        style={{
+                          textAlign: "left",
+                          padding: "4px 6px",
+                          fontSize: 10,
+                          fontWeight: 800,
+                          letterSpacing: ".04em",
+                          textTransform: "uppercase",
+                          color: "var(--text3)",
+                          borderBottom: "1px solid var(--border)",
+                        }}
+                      >
+                        {h}
+                      </th>
+                    ),
+                  )}
+                </tr>
+              </thead>
+              <tbody>
+                {detail.items.map((item, i) => {
+                  const change = cr.changes.find(
+                    (c) =>
+                      c.productId === item.productId &&
+                      c.fromSize === item.size,
+                  );
+                  return (
+                    <tr key={i}>
+                      <td
+                        style={{
+                          padding: "6px",
+                          borderBottom: "0.5px solid var(--border)",
+                        }}
+                      >
+                        {item.productName}
+                      </td>
+                      <td
+                        style={{
+                          padding: "6px",
+                          borderBottom: "0.5px solid var(--border)",
+                        }}
+                      >
+                        ×{item.quantity}
+                      </td>
+                      <td
+                        style={{
+                          padding: "6px",
+                          borderBottom: "0.5px solid var(--border)",
+                          color: change ? "var(--text3)" : "var(--text)",
+                          textDecoration: change ? "line-through" : "none",
+                        }}
+                      >
+                        {displaySize(item.size)}
+                      </td>
+                      <td
+                        style={{
+                          padding: "6px",
+                          borderBottom: "0.5px solid var(--border)",
+                        }}
+                      >
+                        {change ? "→" : "—"}
+                      </td>
+                      <td
+                        style={{
+                          padding: "6px",
+                          borderBottom: "0.5px solid var(--border)",
+                          fontWeight: change ? 800 : 400,
+                          color: change ? "var(--mint-dark)" : "var(--text)",
+                        }}
+                      >
+                        {displaySize(change ? change.toSize : item.size)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+
+            {rejectingId === cr.id ? (
+              <div style={{ marginTop: 12 }}>
+                <label
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 700,
+                    display: "block",
+                    marginBottom: 6,
+                  }}
+                >
+                  Reason for rejection{" "}
+                  <span style={{ color: "var(--peach-dark)" }}>*</span>
+                </label>
+                <textarea
+                  value={rejectNote}
+                  onChange={(e) => setRejectNote(e.target.value)}
+                  rows={3}
+                  placeholder="e.g. Requested size is currently out of stock."
+                  style={{
+                    width: "100%",
+                    padding: "9px 12px",
+                    border: "1.5px solid var(--peach-mid)",
+                    borderRadius: "var(--radius-sm)",
+                    fontSize: 13,
+                    fontFamily: "var(--font-body)",
+                    resize: "vertical",
+                    outline: "none",
+                  }}
+                />
+                <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
+                  <Btn
+                    variant="ghost"
+                    fullWidth
+                    onClick={() => {
+                      setRejectingId(null);
+                      setRejectNote("");
+                    }}
+                  >
+                    Cancel
+                  </Btn>
+                  <Btn
+                    variant="danger"
+                    fullWidth
+                    disabled={!rejectNote.trim()}
+                    onClick={() => rejectChangeRequest(cr.id)}
+                  >
+                    Confirm Rejection
+                  </Btn>
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
+                <Btn
+                  variant="admin"
+                  fullWidth
+                  onClick={() => approveChangeRequest(cr.id)}
+                >
+                  ✅ Approve
+                </Btn>
+                <Btn
+                  variant="softRed"
+                  fullWidth
+                  onClick={() => setRejectingId(cr.id)}
+                >
+                  ❌ Reject
+                </Btn>
+              </div>
+            )}
+          </div>
+          {getHistoricalRequest()}
+        </div>
+      );
+    }
+  };
+
+  const getStatusUpdate = (o) => {
+    const hasPendingChangeRequest =
+      ["SUBMITTED", "REVIEW"].includes(o.status) &&
+      o.changeRequests?.length > 0;
+    if (o.status === "CANCELLED" || o.status === "PICKED_UP")
+      return (
+        <span
+          style={{
+            fontSize: 11,
+            color: "var(--text3)",
+            fontStyle: "italic",
+            padding: "4px 8px",
+            background: "var(--bg3)",
+            borderRadius: "var(--radius-xs)",
+            display: "inline-block",
+          }}
+        >
+          Locked
+        </span>
+      );
+    else
+      return (
+        <select
+          value={o.status}
+          onChange={(e) => handleStatusChange(o.id, e.target.value)}
+          style={{
+            padding: "4px 8px",
+            border: "1px solid var(--border)",
+            borderRadius: "var(--radius-xs)",
+            // fontSize: 11,
+            background: "var(--bg)",
+            color: "var(--text)",
+            outline: "none",
+            cursor: "pointer",
+          }}
+        >
+          // Replace with:
+          {Object.entries(STATUS_LABELS)
+            .filter(([value]) => {
+              if (o.status === "PICKED_UP" && value === "CANCELLED")
+                return false;
+              return true;
+            })
+            .map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+        </select>
       );
   };
 
@@ -7606,7 +8545,15 @@ function AdminOrders() {
                 return (
                   <tr
                     key={o.id}
-                    style={{ cursor: "pointer", transition: "background .15s" }}
+                    style={{
+                      cursor: "pointer",
+                      transition: "background .15s",
+                      background: o.changeRequests?.some(
+                        (cr) => cr.status === "PENDING",
+                      )
+                        ? "#fffaf0"
+                        : undefined,
+                    }}
                     onClick={() => {
                       setDetail(o);
                     }}
@@ -7680,6 +8627,22 @@ function AdminOrders() {
                       }}
                     >
                       <Badge status={o.status} />
+                      {o.changeRequests?.some(
+                        (cr) => cr.status === "PENDING",
+                      ) && (
+                        <span
+                          className="txt-badge"
+                          style={{
+                            background: "var(--peach)",
+                            color: "var(--peach-dark)",
+                            padding: "3px 10px",
+                            borderRadius: 30,
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          ⚠ Change Requested
+                        </span>
+                      )}
                     </td>
                     <td
                       style={{
@@ -7701,54 +8664,7 @@ function AdminOrders() {
                       }}
                       onClick={(e) => e.stopPropagation()}
                     >
-                      {o.status === "CANCELLED" || o.status === "PICKED_UP" ? (
-                        <span
-                          style={{
-                            fontSize: 11,
-                            color: "var(--text3)",
-                            fontStyle: "italic",
-                            padding: "4px 8px",
-                            background: "var(--bg3)",
-                            borderRadius: "var(--radius-xs)",
-                            display: "inline-block",
-                          }}
-                        >
-                          Locked
-                        </span>
-                      ) : (
-                        <select
-                          value={o.status}
-                          onChange={(e) =>
-                            handleStatusChange(o.id, e.target.value)
-                          }
-                          style={{
-                            padding: "4px 8px",
-                            border: "1px solid var(--border)",
-                            borderRadius: "var(--radius-xs)",
-                            // fontSize: 11,
-                            background: "var(--bg)",
-                            color: "var(--text)",
-                            outline: "none",
-                            cursor: "pointer",
-                          }}
-                        >
-                          // Replace with:
-                          {Object.entries(STATUS_LABELS)
-                            .filter(([value]) => {
-                              if (
-                                o.status === "PICKED_UP" &&
-                                value === "CANCELLED"
-                              )
-                                return false;
-                              return true;
-                            })
-                            .map(([value, label]) => (
-                              <option key={value} value={value}>
-                                {label}
-                              </option>
-                            ))}
-                        </select>
-                      )}
+                      {getStatusUpdate(o)}
                     </td>
                   </tr>
                 );
@@ -7915,6 +8831,7 @@ function AdminOrders() {
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             {getStatusSelect(detail)}
           </div>
+          {getChangeRequestApproval(detail)}
         </Modal>
       )}
     </div>
