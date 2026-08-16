@@ -4531,7 +4531,7 @@ function ParentOrders() {
         >
           <thead>
             <tr>
-              {["Item", "Qty", "From", "", "To"].map((h) => (
+              {["Item", "Change"].map((h) => (
                 <th
                   key={h}
                   style={{
@@ -4552,25 +4552,28 @@ function ParentOrders() {
           </thead>
           <tbody>
             {viewRequest.changes.map((c, i) => {
-              const qty = order?.items.find(
+              const fallbackQty = order?.items.find(
                 (it) => it.productId === c.productId,
               )?.quantity;
+              const originalQty = c.quantity ?? fallbackQty;
+              const removed = c.toQuantity === 0;
+              const toQty = c.toQuantity != null ? c.toQuantity : originalQty;
+              const left = `${displaySize(c.fromSize)} × ${originalQty ?? "—"}`;
+              const right = removed
+                ? "Removed"
+                : `${displaySize(c.toSize)} × ${toQty}`;
+
               return (
                 <tr key={i}>
                   <td style={cellStyle}>{c.productName}</td>
-                  <td style={cellStyle}>×{qty ?? "—"}</td>
-                  <td style={{ ...cellStyle, color: "var(--text3)" }}>
-                    {displaySize(c.fromSize)}
-                  </td>
-                  <td style={cellStyle}>→</td>
                   <td
                     style={{
                       ...cellStyle,
                       fontWeight: 800,
-                      color: "var(--mint-dark)",
+                      color: removed ? "var(--peach-dark)" : "var(--mint-dark)",
                     }}
                   >
-                    {displaySize(c.toSize)}
+                    {left} → {right}
                   </td>
                 </tr>
               );
@@ -5798,7 +5801,7 @@ function AdminDashboard() {
             ),
         }))
         .sort((a, b) => b.totalQty - a.totalQty);
-        // .slice(0, 6);
+  // .slice(0, 6);
 
   const maxQty = Math.max(...productQtys.map((p) => p.totalQty), 1);
 
@@ -7786,6 +7789,14 @@ function AdminOrders() {
   const [filterCategory, setFilterCategory] = useState(""); // ← add
   const [rejectingId, setRejectingId] = useState(null);
   const [rejectNote, setRejectNote] = useState("");
+  const [editingItems, setEditingItems] = useState(false);
+  const [draftItems, setDraftItems] = useState([]);
+  const [reviewMode, setReviewMode] = useState(false);
+  const [admins, setAdmins] = useState([]);
+  const [finalApproverId, setFinalApproverId] = useState("");
+  const [signoffNote, setSignoffNote] = useState("");
+  const [showRequstChangeDetail, toggleShowRequstChangeDetail] =
+    useState(false);
 
   const allSizes = useMemo(
     () => sortSizes([...new Set(state.products.flatMap((p) => p.sizes || []))]),
@@ -7795,6 +7806,28 @@ function AdminOrders() {
     () => [...new Set(state.products.map((p) => p.category).filter(Boolean))],
     [state.products],
   );
+  const isSuperAdmin = state.currentUser?.role === "SUPER_ADMIN";
+
+  useEffect(() => {
+    api("/api/admin/accounts")
+      .then(setAdmins)
+      .catch(() => {});
+  }, []);
+
+  const eligibleApprovers = admins.filter(
+    (a) =>
+      a.isActive &&
+      ["MANAGER", "SUPER_ADMIN"].includes(a.role) &&
+      a.id !== state.currentUser?.id,
+  );
+
+  function roleLabel(role) {
+    return (
+      { SUPER_ADMIN: "Super Admin", MANAGER: "Manager", STAFF: "Staff" }[
+        role
+      ] || role
+    );
+  }
   // Re-fetch whenever search/filter changes
   useEffect(() => {
     setLoading(true);
@@ -7811,6 +7844,14 @@ function AdminOrders() {
       .catch(() => setAllOrders(state.orders))
       .finally(() => setLoading(false));
   }, [search, filterStatus, filterLoc]);
+
+  useEffect(() => {
+    setEditingItems(false);
+    setReviewMode(false);
+    setDraftItems([]);
+    setFinalApproverId("");
+    setSignoffNote("");
+  }, [detail?.id]);
 
   // Client-side filter as a fast fallback while API data loads
   const filtered = allOrders
@@ -7891,6 +7932,104 @@ function AdminOrders() {
       dispatch({
         type: "SET_TOAST",
         message: err.message || "Failed to reject request",
+      });
+    }
+  }
+
+  function startEditItems(o) {
+    setDraftItems(
+      o.items.map((it) => ({
+        id: it.id,
+        productId: it.productId,
+        productName: it.productName,
+        size: it.size,
+        quantity: it.quantity,
+        unitPrice: it.unitPrice,
+      })),
+    );
+    setEditingItems(true);
+    setReviewMode(false);
+    setFinalApproverId("");
+    setSignoffNote("");
+  }
+
+  function updateDraftItem(index, field, value) {
+    setDraftItems((prev) =>
+      prev.map((it, i) =>
+        i === index
+          ? { ...it, [field]: field === "quantity" ? Number(value) : value }
+          : it,
+      ),
+    );
+  }
+
+  function cancelEditItems() {
+    setEditingItems(false);
+    setDraftItems([]);
+  }
+
+  function handleContinueToReview() {
+    const changed = draftItems.some((it, i) => {
+      const orig = detail.items[i];
+      return it.size !== orig.size || it.quantity !== orig.quantity;
+    });
+    if (!changed) {
+      dispatch({
+        type: "SET_TOAST",
+        message: "Change at least one size or quantity before continuing.",
+      });
+      return;
+    }
+    setEditingItems(false);
+    setReviewMode(true);
+  }
+
+  async function submitFinalApproval() {
+    if (!finalApproverId) return;
+    const changes = draftItems
+      .map((it, i) => ({ it, orig: detail.items[i] }))
+      .filter(
+        ({ it, orig }) =>
+          it.size !== orig.size || it.quantity !== orig.quantity,
+      )
+      .map(({ it, orig }) => ({
+        productId: it.productId,
+        productName: it.productName,
+        quantity: orig.quantity,
+        fromSize: orig.size,
+        toSize: it.size,
+        ...(it.quantity !== orig.quantity && { toQuantity: it.quantity }),
+      }));
+
+    try {
+      const updatedOrder = await api(
+        `/api/admin/change-requests/${detail.id}/approve`,
+        {
+          method: "PUT",
+          body: {
+            orderId: detail.id,
+            changes,
+            finalApproverId,
+            note: signoffNote,
+          },
+        },
+      );
+      setAllOrders((prev) =>
+        prev.map((o) => (o.id === updatedOrder.id ? updatedOrder : o)),
+      );
+      setDetail(updatedOrder);
+      setReviewMode(false);
+      setDraftItems([]);
+      setFinalApproverId("");
+      setSignoffNote("");
+      dispatch({
+        type: "SET_TOAST",
+        message: "Size exchange approved and applied.",
+      });
+    } catch (err) {
+      dispatch({
+        type: "SET_TOAST",
+        message: err.message || "Failed to finalize size exchange",
       });
     }
   }
@@ -8048,6 +8187,7 @@ function AdminOrders() {
       const resolved = (detail.changeRequests || []).filter(
         (r) => r.status !== "PENDING",
       );
+
       if (resolved.length === 0) return null;
       return (
         <div style={{ marginTop: 16 }}>
@@ -8103,13 +8243,47 @@ function AdminOrders() {
                     </span>
                   </div>
                   <div style={{ fontSize: 12 }}>
-                    {cr.changes.map((c, i) => (
-                      <div key={i}>
-                        {c.productName}: {displaySize(c.fromSize)} →{" "}
-                        {displaySize(c.toSize)}
-                      </div>
-                    ))}
+                    {cr.changes.map((c, i) => {
+                      const removed = c.toQuantity === 0;
+                      const toQty =
+                        c.toQuantity != null ? c.toQuantity : c.quantity;
+                      const left = `${displaySize(c.fromSize)} × ${c.quantity}`;
+                      const right = removed
+                        ? "Removed"
+                        : `${displaySize(c.toSize)} × ${toQty}`;
+                      return (
+                        <div key={i}>
+                          {c.productName}: {left} → {right}
+                        </div>
+                      );
+                    })}
                   </div>
+                  {cr.reviewedBy && (
+                    <div
+                      style={{
+                        marginTop: 6,
+                        fontSize: 11,
+                        color: "var(--text3)",
+                      }}
+                    >
+                      {cr.status === "APPROVED" ? "Approved" : "Reviewed"} by{" "}
+                      <strong>{cr.reviewedBy.name}</strong>
+                      {cr.reviewedBy.role
+                        ? ` (${roleLabel(cr.reviewedBy.role)})`
+                        : ""}
+                    </div>
+                  )}
+                  {cr.reviewNote && (
+                    <div
+                      style={{
+                        marginTop: 6,
+                        fontSize: 11,
+                        color: "var(--text3)",
+                      }}
+                    >
+                      Note: {cr.reviewNote}
+                    </div>
+                  )}
                   {cr.status === "REJECTED" && cr.rejectionNote && (
                     <div
                       style={{
@@ -8167,25 +8341,23 @@ function AdminOrders() {
             >
               <thead>
                 <tr>
-                  {["Item", "Qty", "Current Size", "", "Requested Size"].map(
-                    (h) => (
-                      <th
-                        key={h}
-                        style={{
-                          textAlign: "left",
-                          padding: "4px 6px",
-                          fontSize: 10,
-                          fontWeight: 800,
-                          letterSpacing: ".04em",
-                          textTransform: "uppercase",
-                          color: "var(--text3)",
-                          borderBottom: "1px solid var(--border)",
-                        }}
-                      >
-                        {h}
-                      </th>
-                    ),
-                  )}
+                  {["Item", "Change"].map((h) => (
+                    <th
+                      key={h}
+                      style={{
+                        textAlign: "left",
+                        padding: "4px 6px",
+                        fontSize: 10,
+                        fontWeight: 800,
+                        letterSpacing: ".04em",
+                        textTransform: "uppercase",
+                        color: "var(--text3)",
+                        borderBottom: "1px solid var(--border)",
+                      }}
+                    >
+                      {h}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
@@ -8195,51 +8367,45 @@ function AdminOrders() {
                       c.productId === item.productId &&
                       c.fromSize === item.size,
                   );
+                  const cellStyle = {
+                    padding: "6px",
+                    borderBottom: "0.5px solid var(--border)",
+                  };
+
+                  if (!change) {
+                    return (
+                      <tr key={i}>
+                        <td style={cellStyle}>{item.productName}</td>
+                        <td style={cellStyle}>
+                          {displaySize(item.size)} × {item.quantity}
+                        </td>
+                      </tr>
+                    );
+                  }
+
+                  const removed = change.toQuantity === 0;
+                  const toQty =
+                    change.toQuantity != null
+                      ? change.toQuantity
+                      : change.quantity;
+                  const left = `${displaySize(change.fromSize)} × ${change.quantity}`;
+                  const right = removed
+                    ? "Removed"
+                    : `${displaySize(change.toSize)} × ${toQty}`;
+
                   return (
                     <tr key={i}>
+                      <td style={cellStyle}>{item.productName}</td>
                       <td
                         style={{
-                          padding: "6px",
-                          borderBottom: "0.5px solid var(--border)",
+                          ...cellStyle,
+                          fontWeight: 800,
+                          color: removed
+                            ? "var(--peach-dark)"
+                            : "var(--mint-dark)",
                         }}
                       >
-                        {item.productName}
-                      </td>
-                      <td
-                        style={{
-                          padding: "6px",
-                          borderBottom: "0.5px solid var(--border)",
-                        }}
-                      >
-                        ×{item.quantity}
-                      </td>
-                      <td
-                        style={{
-                          padding: "6px",
-                          borderBottom: "0.5px solid var(--border)",
-                          color: change ? "var(--text3)" : "var(--text)",
-                          textDecoration: change ? "line-through" : "none",
-                        }}
-                      >
-                        {displaySize(item.size)}
-                      </td>
-                      <td
-                        style={{
-                          padding: "6px",
-                          borderBottom: "0.5px solid var(--border)",
-                        }}
-                      >
-                        {change ? "→" : "—"}
-                      </td>
-                      <td
-                        style={{
-                          padding: "6px",
-                          borderBottom: "0.5px solid var(--border)",
-                          fontWeight: change ? 800 : 400,
-                          color: change ? "var(--mint-dark)" : "var(--text)",
-                        }}
-                      >
-                        {displaySize(change ? change.toSize : item.size)}
+                        {left} → {right}
                       </td>
                     </tr>
                   );
@@ -8322,6 +8488,227 @@ function AdminOrders() {
     }
   };
 
+  const getChangeRequestDetail = (request) => {
+    return (
+      <>
+        <div>Note: {cr.reviewNote}</div>
+        <div>Final Approved by: {cr.reviewedById}</div>
+      </>
+    );
+  };
+  const getSizeExchangeReview = () => {
+    const changedRows = draftItems
+      .map((item, i) => ({ item, orig: detail.items[i] }))
+      .filter(
+        ({ item, orig }) =>
+          item.size !== orig.size || item.quantity !== orig.quantity,
+      );
+
+    return (
+      <div
+        style={{
+          marginTop: 16,
+          border: "1px solid var(--border)",
+          borderRadius: "var(--radius)",
+          overflow: "hidden",
+        }}
+        className="txt-sm"
+      >
+        <div style={{ padding: "10px 14px" }}>
+          <div
+            style={{
+              display: "flex",
+              gap: 8,
+              alignItems: "flex-start",
+              background: "var(--peach)",
+              color: "var(--peach-dark)",
+              borderRadius: "var(--radius-sm)",
+              padding: "10px 12px",
+              marginBottom: 14,
+            }}
+          >
+            <span>⚠️</span>
+            <span>
+              Because this order has already been picked up or paid, it requires
+              another Super Admin/Manager to sign off
+            </span>
+          </div>
+
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr>
+                {["Item", "Qty", "Current Size", "", "Requested Size"].map(
+                  (h) => (
+                    <th
+                      key={h}
+                      style={{
+                        textAlign: "left",
+                        padding: "4px 6px",
+                        fontWeight: 800,
+                        letterSpacing: ".04em",
+                        textTransform: "uppercase",
+                        color: "var(--text3)",
+                        borderBottom: "1px solid var(--border)",
+                      }}
+                    >
+                      {h}
+                    </th>
+                  ),
+                )}
+              </tr>
+            </thead>
+            <tbody>
+              {changedRows.map(({ item, orig }, i) => (
+                <tr key={item.id || i}>
+                  <td
+                    style={{
+                      padding: "6px",
+                      borderBottom: "0.5px solid var(--border)",
+                    }}
+                  >
+                    {item.productName}
+                  </td>
+                  <td
+                    style={{
+                      padding: "6px",
+                      borderBottom: "0.5px solid var(--border)",
+                    }}
+                  >
+                    {item.quantity !== orig.quantity ? (
+                      <>
+                        <span
+                          style={{
+                            color: "var(--text3)",
+                            textDecoration: "line-through",
+                          }}
+                        >
+                          ×{orig.quantity}
+                        </span>{" "}
+                        <span
+                          style={{ fontWeight: 800, color: "var(--mint-dark)" }}
+                        >
+                          ×{item.quantity}
+                        </span>
+                      </>
+                    ) : (
+                      `×${item.quantity}`
+                    )}
+                  </td>
+                  <td
+                    style={{
+                      padding: "6px",
+                      borderBottom: "0.5px solid var(--border)",
+                      color: "var(--text3)",
+                      textDecoration:
+                        item.size !== orig.size ? "line-through" : "none",
+                    }}
+                  >
+                    {displaySize(orig.size)}
+                  </td>
+                  <td
+                    style={{
+                      padding: "6px",
+                      borderBottom: "0.5px solid var(--border)",
+                    }}
+                  >
+                    {item.size !== orig.size ? "→" : ""}
+                  </td>
+                  <td
+                    style={{
+                      padding: "6px",
+                      borderBottom: "0.5px solid var(--border)",
+                      fontWeight: item.size !== orig.size ? 800 : 400,
+                      color:
+                        item.size !== orig.size
+                          ? "var(--mint-dark)"
+                          : "var(--text)",
+                    }}
+                  >
+                    {displaySize(item.size)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div
+            style={{
+              marginTop: 14,
+              border: "1px dashed var(--peach-dark)",
+              borderRadius: "var(--radius-sm)",
+              padding: 12,
+              background: "var(--bg2)",
+            }}
+          >
+            <div
+              style={{
+                fontWeight: 800,
+                color: "var(--peach-dark)",
+                marginBottom: 4,
+              }}
+            ></div>
+            <select
+              value={finalApproverId}
+              onChange={(e) => setFinalApproverId(e.target.value)}
+              style={{
+                width: "100%",
+                padding: "8px 10px",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius-sm)",
+                background: "var(--bg)",
+                outline: "none",
+                marginBottom: 10,
+              }}
+            >
+              <option value="">— Select final approver —</option>
+              {eligibleApprovers.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name} ({roleLabel(a.role)})
+                </option>
+              ))}
+            </select>
+            <textarea
+              value={signoffNote}
+              onChange={(e) => setSignoffNote(e.target.value)}
+              rows={2}
+              placeholder="Optional note from the final approver…"
+              style={{
+                width: "100%",
+                padding: "8px 10px",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius-sm)",
+                fontFamily: "var(--font-body)",
+                resize: "vertical",
+                outline: "none",
+                marginBottom: 10,
+              }}
+            />
+            <Btn
+              variant="admin"
+              fullWidth
+              disabled={!finalApproverId}
+              onClick={submitFinalApproval}
+            >
+              🔒 Final Approval
+            </Btn>
+          </div>
+
+          <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
+            <Btn
+              variant="ghost"
+              fullWidth
+              onClick={() => {
+                setReviewMode(false);
+                setDraftItems([]);
+              }}
+            >
+              Back
+            </Btn>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const getStatusUpdate = (o) => {
     const hasPendingChangeRequest =
       ["SUBMITTED", "REVIEW"].includes(o.status) &&
@@ -8374,6 +8761,296 @@ function AdminOrders() {
       );
   };
 
+  const getItems = () => {
+    const draftSubtotal = editingItems
+      ? draftItems.reduce((sum, it) => sum + it.unitPrice * it.quantity, 0)
+      : 0;
+    const subtotalDisplay = editingItems
+      ? draftSubtotal.toFixed(2)
+      : parseFloat(detail.subtotal).toFixed(2);
+    const discountAmountDisplay = editingItems
+      ? (draftSubtotal * (detail.discountRate || 0)).toFixed(2)
+      : isNaN(detail.discountAmount)
+        ? "0.00"
+        : detail.discountAmount;
+    const totalDisplay = editingItems
+      ? (draftSubtotal - draftSubtotal * (detail.discountRate || 0)).toFixed(2)
+      : parseFloat(detail.totalAmount).toFixed(2);
+
+    return (
+      <>
+        <div
+          style={{
+            borderTop: "1px solid var(--border)",
+            paddingTop: 10,
+            marginBottom: 10,
+          }}
+          className="txt-sm"
+        >
+          {(editingItems ? draftItems : detail.items).map((it, i) =>
+            editingItems ? (
+              <div
+                key={it.id || i}
+                style={{
+                  display: "flex",
+                  gap: 8,
+                  alignItems: "center",
+                  padding: "6px 0",
+                  borderBottom:
+                    i < draftItems.length - 1
+                      ? "0.5px solid var(--border)"
+                      : "none",
+                }}
+              >
+                <span style={{ flex: 1 }}>{it.productName}</span>
+                <select
+                  value={it.size}
+                  onChange={(e) => updateDraftItem(i, "size", e.target.value)}
+                  style={{
+                    padding: "5px 8px",
+                    border: "1px solid var(--border)",
+                    borderRadius: "var(--radius-xs)",
+                    background: "var(--bg)",
+                    outline: "none",
+                  }}
+                >
+                  {sortSizes(
+                    state.products.find((p) => p.id === it.productId)?.sizes ||
+                      [],
+                  ).map((s) => (
+                    <option key={s} value={s}>
+                      {displaySize(s)}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="number"
+                  min={0}
+                  value={it.quantity}
+                  onChange={(e) =>
+                    updateDraftItem(i, "quantity", e.target.value)
+                  }
+                  style={{
+                    width: 52,
+                    padding: "5px 8px",
+                    border: "1px solid var(--border)",
+                    borderRadius: "var(--radius-xs)",
+                    background: "var(--bg)",
+                    outline: "none",
+                  }}
+                />
+                <span
+                  style={{
+                    fontWeight: 700,
+                    width: 60,
+                    textAlign: "right",
+                  }}
+                >
+                  ${(it.unitPrice * it.quantity).toFixed(2)}
+                </span>
+              </div>
+            ) : (
+              <div
+                key={i}
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  padding: "4px 0",
+                }}
+              >
+                <span>
+                  {it.productName} ({displaySize(it.size)}) ×{it.quantity}
+                </span>
+                <span style={{ fontWeight: 700 }}>
+                  ${(it.unitPrice * it.quantity).toFixed(2)}
+                </span>
+              </div>
+            ),
+          )}
+        </div>
+        <div
+          style={{
+            background: "var(--bg2)",
+            borderRadius: "var(--radius-sm)",
+            padding: 10,
+            marginBottom: 14,
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              marginBottom: 2,
+            }}
+            className="txt-sm"
+          >
+            <span style={{ color: "var(--text3)" }}>Subtotal</span>
+            <span>${subtotalDisplay}</span>
+          </div>
+          {detail.discountRate > 0 && (
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                marginBottom: 2,
+                color: "var(--peach-dark)",
+              }}
+            >
+              <span>Discount ({(detail.discountRate * 100).toFixed(0)}%)</span>
+              <span>−${discountAmountDisplay}</span>
+            </div>
+          )}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              fontWeight: 900,
+              color: "var(--sky-dark)",
+              paddingTop: 6,
+              borderTop: "1px solid var(--border)",
+              marginTop: 4,
+              fontSize: "14px",
+            }}
+          >
+            <span>Total</span>
+            <span>${totalDisplay}</span>
+          </div>
+        </div>
+        {editingItems && (
+          <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
+            <Btn variant="admin" fullWidth onClick={handleContinueToReview}>
+              Continue
+            </Btn>
+            <Btn variant="ghost" fullWidth onClick={cancelEditItems}>
+              Cancel
+            </Btn>
+          </div>
+        )}
+      </>
+    );
+  };
+
+  const getOrderDetail = () => {
+    if (detail)
+      return (
+        <Modal
+          title={`Order ${detail.orderNumber}`}
+          onClose={() => setDetail(null)}
+          width={920}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: 14,
+            }}
+          >
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              {getStatusSelect(detail)}
+            </div>
+            <span style={{ fontSize: 11, color: "var(--text3)" }}>
+              {detail.createdAt}
+            </span>
+          </div>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: 8,
+              marginBottom: 14,
+            }}
+          >
+            <div>
+              <div
+                style={{ color: "var(--text3)", marginBottom: 1 }}
+                className="txt-sm"
+              >
+                Child
+              </div>
+              <div style={{ fontWeight: 700 }} className="txt-sm">
+                {detail.childName}
+              </div>
+            </div>
+            <div>
+              <div
+                style={{ color: "var(--text3)", marginBottom: 1 }}
+                className="txt-sm"
+              >
+                Class
+              </div>
+              <div style={{ fontWeight: 700 }} className="txt-sm">
+                {detail.childClass}
+              </div>
+            </div>
+            <div>
+              <div
+                style={{ color: "var(--text3)", marginBottom: 1 }}
+                className="txt-sm"
+              >
+                Parent
+              </div>
+              <div style={{ fontWeight: 700 }} className="txt-sm">
+                {detail.parentName}
+              </div>
+            </div>
+            <div>
+              <div
+                style={{ color: "var(--text3)", marginBottom: 1 }}
+                className="txt-sm"
+              >
+                Phone
+              </div>
+              <div style={{ fontWeight: 700 }} className="txt-sm">
+                {detail.parentPhone}
+              </div>
+            </div>
+            <div style={{ gridColumn: "1/-1" }}>
+              <div
+                style={{ color: "var(--text3)", marginBottom: 1 }}
+                className="txt-sm"
+              >
+                Location
+              </div>
+              <div style={{ fontWeight: 700 }} className="txt-sm">
+                {state.locations.find((l) => l.id === detail.locationId)
+                  ?.name || detail.locationName}
+              </div>
+            </div>
+          </div>
+          {isSuperAdmin &&
+            detail.status === "PICKED_UP" &&
+            !reviewMode &&
+            !detail.changeRequests?.some((cr) => cr.status === "PENDING") && (
+              <>
+                <div style={{ marginTop: 16 }} className="txt-sm">
+                  {editingItems ? (
+                    <Btn
+                      variant="admin"
+                      size="sm"
+                      style={{ marginBottom: "5px" }}
+                    >
+                      ✏️ Editing
+                    </Btn>
+                  ) : (
+                    <Btn
+                      variant="admin"
+                      size="sm"
+                      onClick={() => startEditItems(detail)}
+                      style={{ marginBottom: "5px" }}
+                    >
+                      ✏️ Edit Items
+                    </Btn>
+                  )}
+                </div>
+              </>
+            )}
+          {getItems()}
+          {reviewMode && getSizeExchangeReview()}
+          {getChangeRequestApproval(detail)}
+        </Modal>
+      );
+  };
   return (
     <div className="animate-fade">
       <div
@@ -8673,167 +9350,7 @@ function AdminOrders() {
           </table>
         </div>
       )}
-
-      {detail && (
-        <Modal
-          title={`Order ${detail.orderNumber}`}
-          onClose={() => setDetail(null)}
-          width={520}
-        >
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: 14,
-            }}
-          >
-            <Badge status={detail.status} />
-            <span style={{ fontSize: 11, color: "var(--text3)" }}>
-              {detail.createdAt}
-            </span>
-          </div>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: 8,
-              marginBottom: 14,
-              fontSize: 12,
-            }}
-          >
-            <div>
-              <div
-                style={{ color: "var(--text3)", fontSize: 10, marginBottom: 1 }}
-              >
-                Child
-              </div>
-              <div style={{ fontWeight: 700 }}>{detail.childName}</div>
-            </div>
-            <div>
-              <div
-                style={{ color: "var(--text3)", fontSize: 10, marginBottom: 1 }}
-              >
-                Class
-              </div>
-              <div style={{ fontWeight: 700 }}>{detail.childClass}</div>
-            </div>
-            <div>
-              <div
-                style={{ color: "var(--text3)", fontSize: 10, marginBottom: 1 }}
-              >
-                Parent
-              </div>
-              <div style={{ fontWeight: 700 }}>{detail.parentName}</div>
-            </div>
-            <div>
-              <div
-                style={{ color: "var(--text3)", fontSize: 10, marginBottom: 1 }}
-              >
-                Phone
-              </div>
-              <div style={{ fontWeight: 700 }}>{detail.parentPhone}</div>
-            </div>
-            <div style={{ gridColumn: "1/-1" }}>
-              <div
-                style={{ color: "var(--text3)", fontSize: 10, marginBottom: 1 }}
-              >
-                Location
-              </div>
-              <div style={{ fontWeight: 700 }}>
-                {state.locations.find((l) => l.id === detail.locationId)
-                  ?.name || detail.locationName}
-              </div>
-            </div>
-          </div>
-          <div
-            style={{
-              borderTop: "1px solid var(--border)",
-              paddingTop: 10,
-              marginBottom: 10,
-            }}
-          >
-            {detail.items.map((it, i) => (
-              <div
-                key={i}
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  fontSize: 12,
-                  padding: "4px 0",
-                }}
-              >
-                <span>
-                  {it.productName} ({displaySize(it.size)}) ×{it.quantity}
-                </span>
-                <span style={{ fontWeight: 700 }}>
-                  ${(it.unitPrice * it.quantity).toFixed(2)}
-                </span>
-              </div>
-            ))}
-          </div>
-          <div
-            style={{
-              background: "var(--bg2)",
-              borderRadius: "var(--radius-sm)",
-              padding: 10,
-              marginBottom: 14,
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                fontSize: 12,
-                marginBottom: 2,
-              }}
-            >
-              <span style={{ color: "var(--text3)" }}>Subtotal</span>
-              <span>${parseFloat(detail.subtotal).toFixed(2)}</span>
-            </div>
-            {detail.discountRate > 0 && (
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  fontSize: 12,
-                  marginBottom: 2,
-                  color: "var(--peach-dark)",
-                }}
-              >
-                <span>
-                  Discount ({(detail.discountRate * 100).toFixed(0)}%)
-                </span>
-                <span>
-                  −$
-                  {isNaN(detail.discountAmount)
-                    ? "0.00"
-                    : detail.discountAmount}
-                </span>
-              </div>
-            )}
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                fontSize: 15,
-                fontWeight: 900,
-                color: "var(--sky-dark)",
-                paddingTop: 6,
-                borderTop: "1px solid var(--border)",
-                marginTop: 4,
-              }}
-            >
-              <span>Total</span>
-              <span>${parseFloat(detail.totalAmount).toFixed(2)}</span>
-            </div>
-          </div>
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            {getStatusSelect(detail)}
-          </div>
-          {getChangeRequestApproval(detail)}
-        </Modal>
-      )}
+      {getOrderDetail()}
     </div>
   );
 }
